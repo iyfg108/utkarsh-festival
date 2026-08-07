@@ -1,0 +1,208 @@
+import type { AccentKey, Category } from './types'
+
+/** Tiny classnames helper — no dependency needed for what we do here. */
+export function cn(...parts: (string | false | null | undefined)[]): string {
+  return parts.filter(Boolean).join(' ')
+}
+
+/* -------------------------------------------------------------------------
+   Accent palette — one source of truth so tracks stay visually consistent
+   across cards, detail pages, chips and the admin portal.
+   Tailwind needs literal class strings, so these are written out in full.
+   ------------------------------------------------------------------------- */
+export interface AccentStyles {
+  /** Soft tinted surface for cards */
+  surface: string
+  /** Solid fill for icon badges and buttons */
+  solid: string
+  /** Text colour on a light background */
+  text: string
+  /** Border colour */
+  border: string
+  /** Gradient used for hero washes and progress bars */
+  gradient: string
+  /** Small chip */
+  chip: string
+  /** Glow ring on hover */
+  glow: string
+}
+
+const ACCENTS: Record<AccentKey, AccentStyles> = {
+  saffron: {
+    surface: 'bg-marigold-50',
+    solid: 'bg-marigold-500 text-white',
+    text: 'text-marigold-700',
+    border: 'border-marigold-200',
+    gradient: 'from-marigold-400 to-marigold-600',
+    chip: 'bg-marigold-100 text-marigold-800 border-marigold-200',
+    glow: 'group-hover:shadow-glow-marigold',
+  },
+  amber: {
+    surface: 'bg-amber-50',
+    solid: 'bg-amber-500 text-white',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+    gradient: 'from-amber-400 to-orange-500',
+    chip: 'bg-amber-100 text-amber-800 border-amber-200',
+    glow: 'group-hover:shadow-glow-marigold',
+  },
+  gold: {
+    surface: 'bg-yellow-50',
+    solid: 'bg-gold-500 text-night-950',
+    text: 'text-gold-600',
+    border: 'border-gold-300',
+    gradient: 'from-gold-300 to-marigold-500',
+    chip: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    glow: 'group-hover:shadow-glow-marigold',
+  },
+  peacock: {
+    surface: 'bg-peacock-50',
+    solid: 'bg-peacock-500 text-white',
+    text: 'text-peacock-700',
+    border: 'border-peacock-200',
+    gradient: 'from-peacock-400 to-peacock-600',
+    chip: 'bg-peacock-100 text-peacock-800 border-peacock-200',
+    glow: 'group-hover:shadow-glow-peacock',
+  },
+  teal: {
+    surface: 'bg-teal-50',
+    solid: 'bg-teal-500 text-white',
+    text: 'text-teal-700',
+    border: 'border-teal-200',
+    gradient: 'from-teal-400 to-peacock-600',
+    chip: 'bg-teal-100 text-teal-800 border-teal-200',
+    glow: 'group-hover:shadow-glow-peacock',
+  },
+  indigo: {
+    surface: 'bg-night-50',
+    solid: 'bg-night-600 text-white',
+    text: 'text-night-700',
+    border: 'border-night-200',
+    gradient: 'from-night-500 to-night-700',
+    chip: 'bg-night-100 text-night-800 border-night-200',
+    glow: 'group-hover:shadow-lift',
+  },
+  magenta: {
+    surface: 'bg-fuchsia-50',
+    solid: 'bg-fuchsia-600 text-white',
+    text: 'text-fuchsia-700',
+    border: 'border-fuchsia-200',
+    gradient: 'from-fuchsia-500 to-rose-festival-600',
+    chip: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+    glow: 'group-hover:shadow-lift',
+  },
+  rose: {
+    surface: 'bg-rose-50',
+    solid: 'bg-rose-festival-500 text-white',
+    text: 'text-rose-festival-600',
+    border: 'border-rose-200',
+    gradient: 'from-rose-festival-400 to-fuchsia-600',
+    chip: 'bg-rose-100 text-rose-800 border-rose-200',
+    glow: 'group-hover:shadow-lift',
+  },
+}
+
+export function accent(key: string | null | undefined): AccentStyles {
+  return ACCENTS[(key ?? 'saffron') as AccentKey] ?? ACCENTS.saffron
+}
+
+/* ------------------------------------------------------------------------- */
+
+export function categoryForClass(
+  categories: Category[],
+  classLevel: number | null,
+): Category | null {
+  if (!classLevel) return null
+  return (
+    categories.find((c) => classLevel >= c.min_class && classLevel <= c.max_class) ?? null
+  )
+}
+
+export function formatDate(value: string | null | undefined, withTime = false): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  })
+}
+
+export function formatLongDate(value: string | null | undefined): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+export function classLabel(n: number | null | undefined): string {
+  if (!n) return '—'
+  const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'
+  return `${n}${suffix}`
+}
+
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('')
+}
+
+/** Indian mobile numbers, loosely — enough to catch typos, not to gatekeep. */
+export function isValidPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, '')
+  return digits.length >= 10 && digits.length <= 13
+}
+
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim())
+}
+
+/** Escapes a value for CSV — quotes, commas and newlines all handled. */
+export function toCsv(rows: Record<string, unknown>[], columns?: string[]): string {
+  if (rows.length === 0) return ''
+  const keys = columns ?? Object.keys(rows[0])
+  const esc = (v: unknown) => {
+    if (v === null || v === undefined) return ''
+    const s = String(v)
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  return [keys.join(','), ...rows.map((r) => keys.map((k) => esc(r[k])).join(','))].join('\n')
+}
+
+export function downloadCsv(filename: string, csv: string): void {
+  // BOM so Excel opens UTF-8 (Assamese/Devanagari names) correctly.
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/** Deterministic pastel pair for placeholder gallery tiles. */
+export function placeholderPalette(key: string): { from: string; to: string; hue: number } {
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 360
+  return {
+    hue: h,
+    from: `hsl(${h} 78% 62%)`,
+    to: `hsl(${(h + 48) % 360} 72% 46%)`,
+  }
+}
+
+export function pluralise(n: number, one: string, many?: string): string {
+  return n === 1 ? one : (many ?? `${one}s`)
+}
