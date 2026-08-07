@@ -50,7 +50,7 @@ insert into tracks (
   requires_selection, selection_label, selection_help, sort_order
 ) values
   (
-    'chitrakala', 'Art & Painting', 'Chitrakalā',
+    'chitrakala', 'Art & Painting', 'Chitrakala',
     'Let your colours tell the story.',
     'Bring the pastimes of Krishna, the beauty of our temples and the spirit of our heritage onto paper. Themes are announced on the spot so every artist starts equal — what you bring is your imagination.',
     'palette', 'saffron',
@@ -64,7 +64,7 @@ insert into tracks (
     90, false, 1, 1, false, null, null, 1
   ),
   (
-    'vesh-bhusha', 'Fancy Dress', 'Veṣa Bhūṣā',
+    'vesh-bhusha', 'Fancy Dress', 'Vesha Bhusha',
     'Become the character you love.',
     'Dress as a personality from our scriptures and speak a few lines in their voice. Judged on costume, confidence and how well you carry the character — not on how expensive the outfit is.',
     'mask', 'magenta',
@@ -80,7 +80,7 @@ insert into tracks (
     2
   ),
   (
-    'sloka-recitation', 'Sloka Recitation', 'Śloka Uchchāraṇa',
+    'sloka-recitation', 'Sloka Recitation', 'Shloka Uchcharana',
     'Ancient verses, young voices.',
     'Recite verses from the Bhagavad-gita, Sri Isopanisad and our prayer tradition. Judged on pronunciation, rhythm, memory and the feeling you bring to the verse.',
     'scroll', 'gold',
@@ -96,7 +96,7 @@ insert into tracks (
     3
   ),
   (
-    'devotional-music', 'Devotional Music', 'Bhajan & Kīrtan',
+    'devotional-music', 'Devotional Music', 'Bhajan & Kirtan',
     'Sing what the heart already knows.',
     'A bhajan or kirtan of your choosing, sung solo. Harmonium, tabla, kartals or a simple track — or nothing at all. Judged on melody, clarity of words, rhythm and devotion.',
     'music', 'peacock',
@@ -112,7 +112,7 @@ insert into tracks (
     4
   ),
   (
-    'nritya', 'Classical Dance', 'Nṛtya',
+    'nritya', 'Classical Dance', 'Nritya',
     'Every mudra tells a pastime.',
     'Bharatanatyam, Odissi, Kathak, Sattriya or a devotional folk form — perform a composition rooted in our tradition. Judged on technique, expression (abhinaya), rhythm and costume.',
     'dance', 'rose',
@@ -128,7 +128,7 @@ insert into tracks (
     5
   ),
   (
-    'natak', 'Skit & Drama', 'Nāṭak',
+    'natak', 'Skit & Drama', 'Natak',
     'Bring the pastimes alive on stage.',
     'A short play on a scriptural episode. Teams of 4 to 10. Judged on storytelling, dialogue, teamwork, and how faithfully the pastime is told.',
     'drama', 'indigo',
@@ -145,7 +145,7 @@ insert into tracks (
     6
   ),
   (
-    'gyan-yagna', 'Heritage Quiz', 'Jñāna Yajña',
+    'gyan-yagna', 'Heritage Quiz', 'Gyana Yajna',
     'How well do you know your roots?',
     'A team quiz on the Bhagavad-gita, the Puranas, Indian history, art and the culture of Assam. Written prelims, then a live buzzer final on stage.',
     'brain', 'teal',
@@ -159,7 +159,7 @@ insert into tracks (
     45, true, 2, 2, false, null, null, 7
   ),
   (
-    'vaktritva', 'Elocution', 'Vaktṛtva',
+    'vaktritva', 'Elocution', 'Vaktritva',
     'Say something worth hearing.',
     'A prepared speech on a theme from our heritage, in Assamese, Hindi or English. Judged on content, language, delivery and the ability to hold an audience.',
     'mic', 'amber',
@@ -467,9 +467,9 @@ insert into settings (key, value, is_public) values
   (
     'contact',
     jsonb_build_object(
-      'email', 'utkarsh@iskconguwahati.org',
-      'phone', '+91 98640 00000',
-      'whatsapp', '+91 98640 00000',
+      'email', 'iyfguwahati@gmail.com',
+      'phone', '+91 87610 13927',
+      'whatsapp', '+91 87610 13927',
       'instagram', 'https://instagram.com/'
     ),
     true

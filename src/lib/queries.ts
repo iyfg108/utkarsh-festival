@@ -112,13 +112,11 @@ export async function fetchSettings(): Promise<FestivalSettings> {
     unknown
   >
 
+  // Spreading a missing key is a no-op, so absent settings fall back cleanly.
   return {
-    registration: {
-      ...SETTING_FALLBACK.registration,
-      ...((map.registration as object) ?? {}),
-    },
-    event: { ...SETTING_FALLBACK.event, ...((map.event as object) ?? {}) },
-    contact: { ...SETTING_FALLBACK.contact, ...((map.contact as object) ?? {}) },
+    registration: { ...SETTING_FALLBACK.registration, ...(map.registration as object) },
+    event: { ...SETTING_FALLBACK.event, ...(map.event as object) },
+    contact: { ...SETTING_FALLBACK.contact, ...(map.contact as object) },
   }
 }
 
