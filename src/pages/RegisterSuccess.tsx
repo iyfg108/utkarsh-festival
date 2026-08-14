@@ -15,6 +15,7 @@ import {
   MapPinIcon,
 } from '@/components/Icons'
 import { Lotus, MarigoldGarland, StarField } from '@/components/Decor'
+import { Artwork } from '@/components/Artwork'
 import { UpiPayPanel } from '@/components/site/UpiPayPanel'
 
 interface SuccessState {
@@ -274,6 +275,15 @@ export default function RegisterSuccess() {
               body="Collect it at the temple, or we will send a digital copy to your email or WhatsApp."
             />
           </div>
+        </div>
+
+        <div className="mt-8 overflow-hidden rounded-4xl border border-night-950/8 stack-shadow">
+          <Artwork
+            name="feeding"
+            rounded={false}
+            sizes="(min-width: 768px) 42rem, 100vw"
+            className="aspect-[4/3] object-[50%_35%]"
+          />
         </div>
 
         <div className="mt-7 flex flex-wrap justify-center gap-3">

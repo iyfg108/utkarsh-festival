@@ -23,6 +23,7 @@ import {
   SoftGlow,
   StarField,
 } from '@/components/Decor'
+import { Artwork } from '@/components/Artwork'
 import { CompetitionCard } from '@/components/site/CompetitionCard'
 import { Countdown } from '@/components/site/Countdown'
 
@@ -129,6 +130,32 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ================================================================ band */}
+      {/* Sits below the fold and stays lazy, so it costs nothing on first
+          paint. Masked top and bottom so it reads as part of the page rather
+          than a rectangle dropped onto it. */}
+      <section className="relative -mt-4" aria-hidden>
+        {/* 2:1 keeps three quarters of the original height. A thinner strip
+            crops straight through the painting's pale misty centre and loses
+            the children altogether — these are narrative pictures, and they
+            stop reading as anything at letterbox proportions. */}
+        <div className="relative aspect-[16/9] overflow-hidden sm:aspect-[2/1] lg:aspect-[12/5]">
+          <Artwork
+            name="running"
+            rounded={false}
+            sizes="100vw"
+            imgClassName="object-[50%_46%]"
+          />
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to bottom, var(--color-cream-50) 0%, transparent 22%, transparent 74%, var(--color-cream-50) 100%)',
+            }}
+          />
+        </div>
+      </section>
+
       {/* =============================================================== stats */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -217,7 +244,17 @@ export default function Home() {
             />
           </Reveal>
 
-          <div className="mt-11 grid gap-4 sm:grid-cols-3">
+          <div className="mt-11 grid items-start gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="overflow-hidden rounded-3xl border border-night-950/8 stack-shadow">
+              <Artwork
+                name="lunch"
+                rounded={false}
+                sizes="(min-width: 1024px) 34vw, 100vw"
+                className="aspect-[4/3] lg:aspect-[5/6]"
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
             {[
               {
                 icon: <TrophyIcon className="size-6" />,
@@ -253,6 +290,7 @@ export default function Home() {
                 </div>
               </Reveal>
             ))}
+            </div>
           </div>
         </div>
       </section>
