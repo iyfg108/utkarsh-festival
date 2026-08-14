@@ -1,7 +1,7 @@
 import { useAuth } from '@/context/AuthContext'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { LockIcon } from '@/components/Icons'
-import { PeacockFeather } from '@/components/Decor'
+import { Brand } from '@/components/Brand'
 
 export function NoAccess({
   inline = false,
@@ -42,8 +42,7 @@ export function NoAccess({
     <div className="grid min-h-dvh place-items-center bg-paper px-4 py-16">
       <div className="w-full max-w-lg">
         <div className="mb-8 flex flex-col items-center">
-          <PeacockFeather className="h-16 w-auto" />
-          <p className="mt-3 font-display text-2xl font-black text-night-950">Utkarsh Organisers</p>
+          <Brand size="lg" />
         </div>
         {body}
       </div>

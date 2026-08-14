@@ -14,14 +14,8 @@ import { accent, cn } from '@/lib/utils'
 import type { SelectionItem } from '@/lib/types'
 import { AdminHeader } from './AdminLayout'
 import { Button } from '@/components/ui/Button'
-import { Input, Select, Toggle } from '@/components/ui/Form'
-import {
-  Badge,
-  EmptyState,
-  ErrorState,
-  LoadingBlock,
-  Modal,
-} from '@/components/ui/Primitives'
+import { Input, Toggle } from '@/components/ui/Form'
+import { EmptyState, ErrorState, LoadingBlock, Modal } from '@/components/ui/Primitives'
 import { MusicIcon, TrackIcon } from '@/components/Icons'
 
 const BLANK = {
@@ -30,13 +24,12 @@ const BLANK = {
   subtitle: '',
   reference_url: '',
   max_slots: 3,
-  category_id: '',
   is_active: true,
   sort_order: 0,
 }
 
 export default function SelectionsAdmin() {
-  const { tracks, categories, categoriesForTrack } = useFestival()
+  const { tracks } = useFestival()
   const toast = useToast()
 
   const selectableTracks = tracks.filter((t) => t.requires_selection)
@@ -57,7 +50,7 @@ export default function SelectionsAdmin() {
 
   const track = tracks.find((t) => t.id === trackId)
   const items = data ?? []
-  const bands = track ? categoriesForTrack(track.id) : []
+  const taken = items.reduce((n, i) => n + i.taken_count, 0)
 
   async function save() {
     if (!editing || !track) return
@@ -74,7 +67,6 @@ export default function SelectionsAdmin() {
         subtitle: editing.subtitle.trim() || null,
         reference_url: editing.reference_url.trim() || null,
         max_slots: Number(editing.max_slots) || 1,
-        category_id: editing.category_id || null,
         is_active: editing.is_active,
         sort_order: Number(editing.sort_order) || 0,
       })
@@ -85,7 +77,12 @@ export default function SelectionsAdmin() {
       setEditing(null)
       reload()
     } catch (err) {
-      toast.error(friendlyError(err))
+      const message = friendlyError(err)
+      toast.error(
+        /oversubscribed|check constraint/i.test(message)
+          ? 'That cap is lower than the number of students who already chose this song. Free up entries first.'
+          : message,
+      )
     } finally {
       setSaving(false)
     }
@@ -100,11 +97,10 @@ export default function SelectionsAdmin() {
       setConfirmDelete(null)
       reload()
     } catch (err) {
-      // Postgres refuses if students already picked it — explain that clearly.
       const message = friendlyError(err)
       toast.error(
         /foreign key|violates/i.test(message)
-          ? 'Students have already chosen this, so it cannot be deleted. Switch it off instead — it will disappear from the form but existing entries stay intact.'
+          ? 'Students have already chosen this, so it cannot be deleted. Switch it off instead — it disappears from the form but existing entries stay intact.'
           : message,
       )
     }
@@ -115,7 +111,7 @@ export default function SelectionsAdmin() {
       <EmptyState
         icon={<MusicIcon className="size-12" />}
         title="No competition uses a selection list"
-        description="Turn on “requires selection” for a track to manage its songs, slokas or characters here."
+        description="Turn on “requires selection” for a competition to manage its songs here."
       />
     )
   }
@@ -123,8 +119,8 @@ export default function SelectionsAdmin() {
   return (
     <>
       <AdminHeader
-        title="Songs, slokas & characters"
-        subtitle="Set how many students may choose each one. The database enforces these caps."
+        title="Bhajan songs"
+        subtitle="Set how many students may sing each song. The database enforces these caps."
         actions={
           <>
             <Button
@@ -142,33 +138,44 @@ export default function SelectionsAdmin() {
               Recalculate counts
             </Button>
             <Button onClick={() => setEditing({ ...BLANK, sort_order: items.length + 1 })}>
-              Add new
+              Add a song
             </Button>
           </>
         }
       />
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {selectableTracks.map((t) => {
-          const a = accent(t.accent)
-          const active = t.id === trackId
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTrackId(t.id)}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-bold transition',
-                active
-                  ? cn(a.solid, 'border-transparent')
-                  : 'border-night-950/12 bg-white text-night-950/65 hover:border-night-950/25',
-              )}
-            >
-              <TrackIcon name={t.icon} className="size-4" />
-              {t.name}
-            </button>
-          )
-        })}
+      {selectableTracks.length > 1 ? (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {selectableTracks.map((t) => {
+            const a = accent(t.accent)
+            const active = t.id === trackId
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTrackId(t.id)}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-bold transition',
+                  active
+                    ? cn(a.solid, 'border-transparent')
+                    : 'border-night-950/12 bg-white text-night-950/65 hover:border-night-950/25',
+                )}
+              >
+                <TrackIcon name={t.icon} className="size-4" />
+                {t.name}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+
+      <div className="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-night-950/8 bg-white px-5 py-4">
+        <p className="text-sm text-night-950/60">
+          <strong className="text-night-950">{items.length}</strong> songs ·{' '}
+          <strong className="text-night-950">{taken}</strong> chosen so far ·{' '}
+          <strong className="text-night-950">{items.filter((i) => i.taken_count >= i.max_slots).length}</strong>{' '}
+          full
+        </p>
       </div>
 
       {loading && items.length === 0 ? (
@@ -178,19 +185,18 @@ export default function SelectionsAdmin() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={<MusicIcon className="size-12" />}
-          title={`No ${track?.selection_label?.toLowerCase() ?? 'items'} yet`}
+          title="No songs yet"
           description="Add the first one so students have something to choose from."
-          action={<Button onClick={() => setEditing({ ...BLANK })}>Add the first one</Button>}
+          action={<Button onClick={() => setEditing({ ...BLANK })}>Add the first song</Button>}
         />
       ) : (
         <div className="overflow-hidden rounded-3xl border border-night-950/8 bg-white stack-shadow">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[46rem] text-left text-sm">
+            <table className="w-full min-w-[42rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-night-950/8 bg-cream-50/70 text-[11px] font-bold uppercase tracking-wider text-night-950/50">
-                  <th className="px-5 py-3.5">Title</th>
-                  <th className="px-4 py-3.5">Age group</th>
-                  <th className="px-4 py-3.5">Taken</th>
+                  <th className="px-5 py-3.5">Song</th>
+                  <th className="px-4 py-3.5">Chosen</th>
                   <th className="px-4 py-3.5">Cap</th>
                   <th className="px-4 py-3.5">Live</th>
                   <th className="px-4 py-3.5" />
@@ -199,7 +205,6 @@ export default function SelectionsAdmin() {
               <tbody className="divide-y divide-night-950/6">
                 {items.map((i) => {
                   const full = i.taken_count >= i.max_slots
-                  const band = categories.find((c) => c.id === i.category_id)
                   return (
                     <tr key={i.id} className="transition hover:bg-cream-50/60">
                       <td className="px-5 py-3.5">
@@ -207,13 +212,6 @@ export default function SelectionsAdmin() {
                         {i.subtitle ? (
                           <p className="text-[12px] italic text-night-950/50">{i.subtitle}</p>
                         ) : null}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {band ? (
-                          <Badge tone="neutral">{band.name}</Badge>
-                        ) : (
-                          <span className="text-[12px] text-night-950/40">All groups</span>
-                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <span
@@ -261,7 +259,6 @@ export default function SelectionsAdmin() {
                               subtitle: i.subtitle ?? '',
                               reference_url: i.reference_url ?? '',
                               max_slots: i.max_slots,
-                              category_id: i.category_id ?? '',
                               is_active: i.is_active,
                               sort_order: i.sort_order,
                             })
@@ -288,17 +285,14 @@ export default function SelectionsAdmin() {
       )}
 
       <p className="mt-4 text-[13px] leading-relaxed text-night-950/50">
-        Lowering a cap below the number already taken is refused by the database — free up slots
-        first by removing entries. Switching something off hides it from new registrations without
-        touching students who already chose it.
+        Lowering a cap below the number already chosen is refused by the database. Switching a song
+        off hides it from new registrations without touching students who already picked it.
       </p>
 
-      {/* editor */}
       <Modal
         open={editing !== null}
         onClose={() => setEditing(null)}
-        title={editing?.id ? 'Edit' : `Add to ${track?.name ?? ''}`}
-        description={track?.selection_label ?? undefined}
+        title={editing?.id ? 'Edit song' : `Add to ${track?.name ?? ''}`}
         footer={
           <>
             <Button variant="ghost" onClick={() => setEditing(null)}>
@@ -323,43 +317,30 @@ export default function SelectionsAdmin() {
               label="Subtitle"
               value={editing.subtitle}
               onChange={(e) => setEditing({ ...editing, subtitle: e.target.value })}
-              placeholder="Composer, scripture reference or first line"
+              placeholder="Composer, or the first line"
             />
             <Input
-              label="Reference link"
+              label="Reference recording"
               value={editing.reference_url}
               onChange={(e) => setEditing({ ...editing, reference_url: e.target.value })}
-              placeholder="https://… (optional recording for students to learn from)"
+              placeholder="https://… (optional, so students can learn it)"
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
-                label="Maximum students"
+                label="Maximum singers"
                 type="number"
                 min={1}
                 value={editing.max_slots}
                 onChange={(e) => setEditing({ ...editing, max_slots: Number(e.target.value) })}
-                hint="How many may pick this."
+                hint="How many students may pick this song."
               />
-              <Select
-                label="Age group"
-                value={editing.category_id}
-                onChange={(e) => setEditing({ ...editing, category_id: e.target.value })}
-                hint="Leave blank to allow every group."
-              >
-                <option value="">All age groups</option>
-                {bands.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} (Class {c.min_class}–{c.max_class})
-                  </option>
-                ))}
-              </Select>
+              <Input
+                label="Sort order"
+                type="number"
+                value={editing.sort_order}
+                onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })}
+              />
             </div>
-            <Input
-              label="Sort order"
-              type="number"
-              value={editing.sort_order}
-              onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })}
-            />
           </div>
         ) : null}
       </Modal>
@@ -367,7 +348,7 @@ export default function SelectionsAdmin() {
       <Modal
         open={confirmDelete !== null}
         onClose={() => setConfirmDelete(null)}
-        title="Delete this option?"
+        title="Delete this song?"
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmDelete(null)}>

@@ -4,7 +4,7 @@ import { useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/context/AuthContext'
 import { useFestival } from '@/context/FestivalContext'
 import { fetchAvailability, fetchRegistrations } from '@/lib/queries'
-import { accent, cn, formatDate } from '@/lib/utils'
+import { accent, cn, formatDate, formatMoney } from '@/lib/utils'
 import { AdminHeader } from './AdminLayout'
 import {
   Badge,
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/Primitives'
 import {
   ClipboardIcon,
+  LockIcon,
   SchoolIcon,
   TrackIcon,
   TrophyIcon,
@@ -22,26 +23,26 @@ import {
 } from '@/components/Icons'
 
 export default function Dashboard() {
-  const { admin, isCoordinator } = useAuth()
-  const { tracks, categories, schools } = useFestival()
+  const { admin } = useAuth()
+  const { tracks } = useFestival()
   const regs = useAsync(() => fetchRegistrations(), [])
   const avail = useAsync(() => fetchAvailability(), [])
 
   const rows = regs.data ?? []
 
   const stats = useMemo(() => {
-    const entries = rows.flatMap((r) => r.registration_tracks)
+    const paid = rows.filter((r) => r.payment_status === 'paid')
+    const due = rows.filter((r) => r.payment_status !== 'paid')
     return {
       registrations: rows.length,
-      entries: entries.length,
-      schools: new Set(
-        rows.map((r) => r.school?.name ?? r.school_name_other ?? '—'),
-      ).size,
-      finalists: rows.filter((r) => r.stage === 'finals').length,
-      shortlisted: entries.filter((e) =>
-        ['shortlisted', 'finalist', 'winner'].includes(e.outcome),
-      ).length,
-      unscored: entries.filter((e) => e.stage1_score === null).length,
+      entries: rows.reduce((n, r) => n + r.registration_tracks.length, 0),
+      schools: new Set(rows.map((r) => r.school_name.trim().toLowerCase())).size,
+      collected: paid.reduce((sum, r) => sum + r.fee_amount, 0),
+      dueCount: due.length,
+      dueAmount: due.reduce((sum, r) => sum + r.fee_amount, 0),
+      atVenue: due.filter((r) => r.payment_method === 'pay_at_venue').length,
+      unpaidOnline: due.filter((r) => r.payment_method === 'razorpay').length,
+      awaiting: rows.filter((r) => r.payment_status === 'awaiting_verification').length,
     }
   }, [rows])
 
@@ -58,24 +59,16 @@ export default function Dashboard() {
         name: t.name,
         accent: t.accent,
         icon: t.icon,
+        mode: t.mode,
         count: counts.get(t.name) ?? 0,
       }))
       .sort((a, b) => b.count - a.count)
   }, [rows, tracks])
 
-  const byCategory = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const r of rows) {
-      const key = r.category?.name ?? '—'
-      counts.set(key, (counts.get(key) ?? 0) + 1)
-    }
-    return categories.map((c) => ({ name: c.name, count: counts.get(c.name) ?? 0 }))
-  }, [rows, categories])
-
   const bySchool = useMemo(() => {
     const counts = new Map<string, number>()
     for (const r of rows) {
-      const key = r.school?.name ?? r.school_name_other ?? 'Unlisted school'
+      const key = r.school_name.trim()
       counts.set(key, (counts.get(key) ?? 0) + 1)
     }
     return [...counts.entries()]
@@ -84,7 +77,7 @@ export default function Dashboard() {
       .slice(0, 8)
   }, [rows])
 
-  const hotItems = useMemo(
+  const hotSongs = useMemo(
     () =>
       (avail.data ?? [])
         .filter((i) => i.taken_count > 0)
@@ -103,14 +96,9 @@ export default function Dashboard() {
     <>
       <AdminHeader
         title={`Namaste, ${admin?.full_name?.split(' ')[0] ?? 'friend'}`}
-        subtitle={
-          isCoordinator
-            ? `Showing registrations for ${schools.find((s) => s.id === admin?.school_id)?.name ?? 'your school'} only.`
-            : 'A live view of how the festival is filling up.'
-        }
+        subtitle="A live view of how the festival is filling up."
       />
 
-      {/* stat tiles */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Tile
           icon={<UsersIcon className="size-5" />}
@@ -131,29 +119,58 @@ export default function Dashboard() {
           tone="from-rose-festival-400 to-fuchsia-600"
         />
         <Tile
-          icon={<TrophyIcon className="size-5" />}
-          label="Through to finals"
-          value={stats.finalists}
-          tone="from-night-500 to-night-700"
+          icon={<LockIcon className="size-5" />}
+          label="Collected so far"
+          value={stats.collected}
+          money
+          tone="from-emerald-400 to-emerald-600"
         />
       </div>
 
-      {stats.unscored > 0 ? (
+      {stats.awaiting > 0 ? (
         <Link
-          to="/admin/shortlist"
-          className="mt-4 flex items-center gap-3 rounded-2xl border-2 border-marigold-300 bg-marigold-50 px-5 py-4 transition hover:border-marigold-400"
+          to="/admin/verify"
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-peacock-300 bg-peacock-50 px-5 py-4 transition hover:border-peacock-400"
         >
-          <TrophyIcon className="size-5 shrink-0 text-marigold-700" />
-          <p className="flex-1 text-sm font-semibold text-marigold-900">
-            {stats.unscored} {stats.unscored === 1 ? 'entry has' : 'entries have'} no Stage 1 score
-            yet.
-          </p>
-          <span className="text-sm font-bold text-marigold-700">Open judging →</span>
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-peacock-500 text-white">
+            <ClipboardIcon className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-peacock-900">
+              {stats.awaiting} UPI {stats.awaiting === 1 ? 'payment' : 'payments'} waiting to be
+              checked
+            </p>
+            <p className="text-[13px] text-peacock-900/70">
+              Match each reference against the bank statement, then confirm.
+            </p>
+          </div>
+          <span className="text-sm font-bold text-peacock-700">Open queue →</span>
         </Link>
       ) : null}
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
-        {/* by track */}
+      {stats.dueCount > 0 ? (
+        <Link
+          to="/admin/day-sheet"
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-marigold-300 bg-marigold-50 px-5 py-4 transition hover:border-marigold-400"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-marigold-500 text-white">
+            <ClipboardIcon className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-marigold-900">
+              {formatMoney(stats.dueAmount)} still to collect from {stats.dueCount}{' '}
+              {stats.dueCount === 1 ? 'student' : 'students'}
+            </p>
+            <p className="text-[13px] text-marigold-900/70">
+              {stats.atVenue} paying at the venue · {stats.unpaidOnline} started online but did not
+              finish
+            </p>
+          </div>
+          <span className="text-sm font-bold text-marigold-700">Open day sheet →</span>
+        </Link>
+      ) : null}
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <section className="rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
           <h2 className="text-lg font-black text-night-950">Entries by competition</h2>
           {stats.entries === 0 ? (
@@ -173,6 +190,9 @@ export default function Dashboard() {
                         <TrackIcon name={t.icon} className="size-4" />
                       </span>
                       <span className="flex-1 text-sm font-semibold text-night-950">{t.name}</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-night-950/35">
+                        {t.mode}
+                      </span>
                       <span className="font-display text-sm font-black tabular-nums text-night-950">
                         {t.count}
                       </span>
@@ -191,27 +211,6 @@ export default function Dashboard() {
         </section>
 
         <div className="space-y-5">
-          {/* by category */}
-          <section className="rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
-            <h2 className="text-lg font-black text-night-950">By age group</h2>
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              {byCategory.map((c) => (
-                <div
-                  key={c.name}
-                  className="rounded-2xl border border-night-950/8 bg-cream-50/70 p-4 text-center"
-                >
-                  <p className="font-display text-2xl font-black tabular-nums text-night-950">
-                    {c.count}
-                  </p>
-                  <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wide text-night-950/50">
-                    {c.name}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* top schools */}
           <section className="rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
             <h2 className="text-lg font-black text-night-950">Most active schools</h2>
             {bySchool.length === 0 ? (
@@ -223,7 +222,7 @@ export default function Dashboard() {
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-night-950/75">
                       {s.name}
                     </span>
-                    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-night-950/6">
+                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-night-950/6">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-peacock-400 to-peacock-600"
                         style={{ width: `${(s.count / maxSchool) * 100}%` }}
@@ -237,90 +236,100 @@ export default function Dashboard() {
               </ul>
             )}
           </section>
+
+          <section className="rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black text-night-950">Songs filling up</h2>
+              <Link to="/admin/songs" className="text-[13px] font-bold text-peacock-700 hover:underline">
+                Manage
+              </Link>
+            </div>
+
+            {hotSongs.length === 0 ? (
+              <p className="mt-4 text-sm text-night-950/50">Nothing has been picked yet.</p>
+            ) : (
+              <ul className="mt-5 space-y-2.5">
+                {hotSongs.map((i) => (
+                  <li key={i.id} className="flex items-center gap-3">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-night-950/80">
+                      {i.title}
+                    </span>
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold tabular-nums',
+                        i.is_full
+                          ? 'bg-rose-100 text-rose-700'
+                          : i.slots_left === 1
+                            ? 'bg-marigold-100 text-marigold-800'
+                            : 'bg-night-950/6 text-night-950/60',
+                      )}
+                    >
+                      {i.taken_count}/{i.max_slots}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        {/* filling up */}
-        <section className="rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-night-950">Filling up fastest</h2>
-            <Link
-              to="/admin/selections"
-              className="text-[13px] font-bold text-peacock-700 hover:underline"
-            >
-              Manage
-            </Link>
-          </div>
-          <p className="mt-1 text-[13px] text-night-950/50">
-            Songs, slokas and characters closest to their cap.
-          </p>
+      <section className="mt-5 rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-black text-night-950">Latest registrations</h2>
+          <Link
+            to="/admin/registrations"
+            className="text-[13px] font-bold text-peacock-700 hover:underline"
+          >
+            See all
+          </Link>
+        </div>
 
-          {hotItems.length === 0 ? (
-            <p className="mt-5 text-sm text-night-950/50">Nothing has been picked yet.</p>
-          ) : (
-            <ul className="mt-5 space-y-2.5">
-              {hotItems.map((i) => (
-                <li key={i.id} className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-night-950/80">
-                    {i.title}
+        {rows.length === 0 ? (
+          <p className="mt-5 text-sm text-night-950/50">No registrations yet.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-night-950/6">
+            {rows.slice(0, 8).map((r) => (
+              <li key={r.id}>
+                <Link
+                  to={`/admin/registrations/${r.id}`}
+                  className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-night-950/4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-night-950">{r.full_name}</p>
+                    <p className="truncate text-[12px] text-night-950/50">
+                      {r.school_name} · Class {r.class_level}
+                    </p>
+                  </div>
+                  <Badge tone={r.payment_status === 'paid' ? 'success' : 'danger'}>
+                    {r.payment_status === 'paid' ? 'Paid' : 'Due'}
+                  </Badge>
+                  <Badge tone="neutral">{r.registration_tracks.length}</Badge>
+                  <span className="hidden shrink-0 text-[11px] text-night-950/40 sm:block">
+                    {formatDate(r.created_at)}
                   </span>
-                  <span
-                    className={cn(
-                      'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold tabular-nums',
-                      i.is_full
-                        ? 'bg-rose-100 text-rose-700'
-                        : i.slots_left === 1
-                          ? 'bg-marigold-100 text-marigold-800'
-                          : 'bg-night-950/6 text-night-950/60',
-                    )}
-                  >
-                    {i.taken_count}/{i.max_slots}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-        {/* recent */}
-        <section className="rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-night-950">Latest registrations</h2>
-            <Link
-              to="/admin/registrations"
-              className="text-[13px] font-bold text-peacock-700 hover:underline"
-            >
-              See all
-            </Link>
-          </div>
-
-          {rows.length === 0 ? (
-            <p className="mt-5 text-sm text-night-950/50">No registrations yet.</p>
-          ) : (
-            <ul className="mt-5 divide-y divide-night-950/6">
-              {rows.slice(0, 7).map((r) => (
-                <li key={r.id}>
-                  <Link
-                    to={`/admin/registrations/${r.id}`}
-                    className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-night-950/4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-night-950">{r.full_name}</p>
-                      <p className="truncate text-[12px] text-night-950/50">
-                        {r.school?.name ?? r.school_name_other} · Class {r.class_level}
-                      </p>
-                    </div>
-                    <Badge tone="neutral">{r.registration_tracks.length}</Badge>
-                    <span className="hidden shrink-0 text-[11px] text-night-950/40 sm:block">
-                      {formatDate(r.created_at)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link
+          to="/admin/judging"
+          className="flex items-center gap-2 rounded-2xl border border-night-950/8 bg-white px-5 py-3 text-sm font-bold text-night-950 stack-shadow transition hover:border-marigold-300"
+        >
+          <TrophyIcon className="size-4 text-marigold-600" />
+          Judging &amp; prizes
+        </Link>
+        <Link
+          to="/admin/day-sheet"
+          className="flex items-center gap-2 rounded-2xl border border-night-950/8 bg-white px-5 py-3 text-sm font-bold text-night-950 stack-shadow transition hover:border-marigold-300"
+        >
+          <ClipboardIcon className="size-4 text-peacock-600" />
+          Print the day sheet
+        </Link>
       </div>
     </>
   )
@@ -331,11 +340,13 @@ function Tile({
   label,
   value,
   tone,
+  money = false,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   tone: string
+  money?: boolean
 }) {
   return (
     <div className="rounded-3xl border border-night-950/8 bg-white p-5 stack-shadow">
@@ -343,6 +354,7 @@ function Tile({
         {icon}
       </span>
       <p className="mt-4 font-display text-3xl font-black tabular-nums text-night-950">
+        {money ? '₹' : ''}
         <CountUp value={value} duration={900} />
       </p>
       <p className="mt-0.5 text-[13px] font-semibold text-night-950/50">{label}</p>

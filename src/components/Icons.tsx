@@ -162,6 +162,26 @@ export function MenuIcon(p: IconProps) {
   )
 }
 
+export function BellIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5Z" />
+      <path d="M10.3 19a2 2 0 0 0 3.4 0" />
+    </svg>
+  )
+}
+
+export function QrIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+      <path d="M13.5 13.5h3v3h-3zM20.5 13.5v3M17.5 20.5h3M13.5 20.5h1" />
+    </svg>
+  )
+}
+
 export function LockIcon(p: IconProps) {
   return (
     <svg {...base} {...p}>

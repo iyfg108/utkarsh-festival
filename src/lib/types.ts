@@ -1,38 +1,27 @@
-/** Mirrors supabase/schema.sql. Keep in step when you change the schema. */
+/** Mirrors supabase/schema.sql (v2). Keep in step when you change the schema. */
 
-export type AdminRole = 'super_admin' | 'school_coordinator' | 'judge'
-export type RegStage = 'school_round' | 'finals'
+export type AdminRole = 'super_admin' | 'judge'
 export type RegStatus = 'confirmed' | 'withdrawn' | 'disqualified'
-export type EntryOutcome =
-  | 'registered'
-  | 'shortlisted'
-  | 'not_shortlisted'
-  | 'finalist'
-  | 'winner'
+export type EntryOutcome = 'registered' | 'participated' | 'absent' | 'winner'
+export type EventMode = 'online' | 'onsite'
+export type PaymentMethod = 'razorpay' | 'upi_manual' | 'pay_at_venue'
+export type PaymentStatus =
+  | 'pending'
+  | 'awaiting_verification'
+  | 'paid'
+  | 'failed'
+  | 'waived'
+export type CertificateStatus = 'pending' | 'collected' | 'emailed' | 'whatsapp_sent'
 
-export interface Category {
-  id: string
-  code: string
-  name: string
-  description: string | null
-  min_class: number
-  max_class: number
-  sort_order: number
-}
-
-export interface School {
-  id: string
-  name: string
-  slug: string
-  area: string | null
-  address: string | null
-  coordinator_name: string | null
-  coordinator_phone: string | null
-  coordinator_email: string | null
-  stage1_date: string | null
-  stage1_venue: string | null
-  is_active: boolean
-}
+export type AccentKey =
+  | 'saffron'
+  | 'peacock'
+  | 'magenta'
+  | 'gold'
+  | 'indigo'
+  | 'rose'
+  | 'teal'
+  | 'amber'
 
 export interface Track {
   id: string
@@ -46,6 +35,10 @@ export interface Track {
   rules: string[]
   what_to_bring: string[]
   duration_minutes: number | null
+  mode: EventMode
+  event_date: string | null
+  min_class: number
+  max_class: number
   is_team: boolean
   min_team_size: number
   max_team_size: number
@@ -56,25 +49,9 @@ export interface Track {
   sort_order: number
 }
 
-export type AccentKey =
-  | 'saffron'
-  | 'peacock'
-  | 'magenta'
-  | 'gold'
-  | 'indigo'
-  | 'rose'
-  | 'teal'
-  | 'amber'
-
-export interface TrackCategory {
-  track_id: string
-  category_id: string
-}
-
 export interface SelectionItem {
   id: string
   track_id: string
-  category_id: string | null
   title: string
   subtitle: string | null
   reference_url: string | null
@@ -89,7 +66,6 @@ export interface SelectionItem {
 export interface SelectionAvailability {
   id: string
   track_id: string
-  category_id: string | null
   title: string
   subtitle: string | null
   reference_url: string | null
@@ -105,19 +81,30 @@ export interface Registration {
   id: string
   reg_code: string
   full_name: string
-  date_of_birth: string | null
-  gender: string | null
+  date_of_birth: string
+  gender: string
   class_level: number
-  section: string | null
-  category_id: string
-  school_id: string | null
-  school_name_other: string | null
+  school_name: string
   guardian_name: string
   guardian_phone: string
   student_phone: string | null
   email: string | null
+  whatsapp: string | null
   address: string | null
-  stage: RegStage
+  fee_amount: number
+  payment_method: PaymentMethod | null
+  payment_status: PaymentStatus
+  razorpay_order_id: string | null
+  razorpay_payment_id: string | null
+  upi_reference: string | null
+  payment_verified_by: string | null
+  payment_verified_at: string | null
+  paid_at: string | null
+  payment_notes: string | null
+  hold_expires_at: string | null
+  attended: boolean
+  certificate_status: CertificateStatus
+  certificate_sent_at: string | null
   status: RegStatus
   consent_media: boolean
   notes: string | null
@@ -132,12 +119,9 @@ export interface RegistrationTrack {
   selection_item_id: string | null
   team_name: string | null
   outcome: EntryOutcome
-  stage1_score: number | null
-  stage1_rank: number | null
-  stage1_remarks: string | null
-  stage2_score: number | null
-  stage2_rank: number | null
-  stage2_remarks: string | null
+  score: number | null
+  rank: number | null
+  remarks: string | null
   award: string | null
   created_at: string
 }
@@ -147,7 +131,6 @@ export interface TeamMember {
   registration_track_id: string
   full_name: string
   class_level: number | null
-  role: string | null
   sort_order: number
 }
 
@@ -157,20 +140,7 @@ export interface GalleryItem {
   title: string | null
   caption: string | null
   image_url: string
-  track_id: string | null
   is_featured: boolean
-  sort_order: number
-}
-
-export interface Testimonial {
-  id: string
-  student_name: string
-  school_name: string | null
-  year: number | null
-  track_name: string | null
-  quote: string
-  avatar_url: string | null
-  is_published: boolean
   sort_order: number
 }
 
@@ -179,7 +149,6 @@ export interface AdminUser {
   full_name: string
   email: string
   role: AdminRole
-  school_id: string | null
   is_active: boolean
   created_at: string
 }
@@ -192,24 +161,36 @@ export interface PublicStats {
 }
 
 /* -------------------------------------------------------------------------
-   Settings — stored as jsonb rows keyed by name
+   Settings
    ------------------------------------------------------------------------- */
 export interface RegistrationSettings {
   open: boolean
-  max_tracks_per_student: number
+  fee: number
   closes_at: string | null
+  /** Minutes an unpaid registration holds its bhajan song slot. */
+  hold_minutes?: number
 }
 
 export interface EventSettings {
   edition: string
-  stage1_label: string
-  stage1_window: string
-  stage2_label: string
-  stage2_date: string
-  stage2_note?: string
+  online_date: string
+  onsite_date: string
   venue: string
   venue_map_url?: string
   city: string
+}
+
+export interface PaymentSettings {
+  /** The VPA money is collected to, e.g. "iyfguwahati@sbi". */
+  upi_id: string
+  /** Payee name shown in the student's UPI app. */
+  upi_name: string
+  /** Which methods students may choose. Razorpay can be switched on later. */
+  methods: {
+    upi_manual: boolean
+    pay_at_venue: boolean
+    razorpay: boolean
+  }
 }
 
 export interface ContactSettings {
@@ -222,32 +203,33 @@ export interface ContactSettings {
 export interface FestivalSettings {
   registration: RegistrationSettings
   event: EventSettings
+  payment: PaymentSettings
   contact: ContactSettings
 }
 
 /* -------------------------------------------------------------------------
-   Registration submission payload (matches submit_registration)
+   Registration submission
    ------------------------------------------------------------------------- */
 export interface EntryDraft {
   track_id: string
   selection_item_id?: string | null
   team_name?: string | null
-  members?: { full_name: string; class_level?: number | null; role?: string | null }[]
+  members?: { full_name: string; class_level?: number | null }[]
 }
 
 export interface RegistrationDraft {
   full_name: string
-  date_of_birth?: string | null
-  gender?: string | null
+  date_of_birth: string
+  gender: string
   class_level: number | null
-  section?: string | null
-  school_id?: string | null
-  school_name_other?: string | null
+  school_name: string
   guardian_name: string
   guardian_phone: string
   student_phone?: string | null
   email?: string | null
+  whatsapp?: string | null
   address?: string | null
+  payment_method: PaymentMethod
   consent_media: boolean
   entries: EntryDraft[]
 }
@@ -256,21 +238,33 @@ export interface SubmitResult {
   reg_code: string
   registration_id: string
   full_name: string
+  fee_amount: number
+  payment_method: PaymentMethod
+  has_onsite: boolean
+  /** When the song slot is released if unpaid. Null = never expires. */
+  hold_expires_at: string | null
 }
 
 /** Shape returned by lookup_registration(). */
 export interface StatusResult {
+  registration_id: string
   reg_code: string
   full_name: string
   class_level: number
-  stage: RegStage
+  school_name: string
   status: RegStatus
-  category: string
-  school: string
+  fee_amount: number
+  payment_method: PaymentMethod | null
+  payment_status: PaymentStatus
+  upi_reference: string | null
+  hold_expires_at: string | null
+  certificate_status: CertificateStatus
   created_at: string
   entries: {
     track: string
     track_slug: string
+    mode: EventMode
+    event_date: string | null
     selection: string | null
     team_name: string | null
     outcome: EntryOutcome
@@ -279,13 +273,26 @@ export interface StatusResult {
 }
 
 /* -------------------------------------------------------------------------
-   Admin composite rows
+   Payments
+   ------------------------------------------------------------------------- */
+export interface CreateOrderResult {
+  order_id: string
+  amount: number
+  currency: string
+  key_id: string
+  reg_code: string
+  name: string
+  email: string
+  contact: string
+  already_paid?: boolean
+}
+
+/* -------------------------------------------------------------------------
+   Admin composite row
    ------------------------------------------------------------------------- */
 export interface RegistrationRow extends Registration {
-  category: Pick<Category, 'id' | 'name' | 'code'> | null
-  school: Pick<School, 'id' | 'name'> | null
   registration_tracks: (RegistrationTrack & {
-    track: Pick<Track, 'id' | 'name' | 'slug' | 'accent' | 'icon'> | null
+    track: Pick<Track, 'id' | 'name' | 'slug' | 'accent' | 'icon' | 'mode'> | null
     selection_item: Pick<SelectionItem, 'id' | 'title'> | null
     team_members?: TeamMember[]
   })[]

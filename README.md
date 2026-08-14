@@ -1,38 +1,44 @@
 # Utkarsh Heritage Festival
 
 The public website and organiser portal for **Utkarsh**, the annual heritage
-festival for school students in Guwahati, held on the eve of Sri Krishna
-Janmashtami at ISKCON Ulubari.
+festival for school students in Guwahati, run by ISKCON Guwahati, Ulubari.
 
-Students explore the competitions, register themselves, and check their status.
-Organisers run the whole festival — registrations, Stage 1 judging, shortlisting
-for the finals, and the song/sloka catalogue — from `/admin`.
+Students browse the competitions, register, pay, and check their status.
+Organisers run the whole event — registrations, payments, judging, prizes and
+certificates — from `/admin`.
 
 ---
 
 ## How the festival works
 
-The site is built around the two-stage structure:
+Five competitions, open to **Class 1 to 10**, across two days. A student may
+enter as many as they like for a single **₹99** registration fee.
 
-| Stage | Where | What happens |
+| Date | Where | Competitions |
 |---|---|---|
-| **1 — School Round** | Inside each student's own school | Every registered student competes. Organisers score entries and shortlist the best from each school. |
-| **2 — Grand Finale** | ISKCON Ulubari, Guwahati | Shortlisted students perform on the temple stage on Janmashtami eve. |
+| **23 August** | Online, from home | Vedic Quiz |
+| **30 August** | ISKCON Guwahati, Ulubari | Vedic Art, Vedic Fancy Dress, Devotional Bhajan, Gita Shloka Uchcharan |
 
-Shortlisting a student in the admin portal moves them to the `finals` stage,
-which is immediately what they see on the public **Check status** page.
+Everyone gets a certificate. Prizes and prasadam are given at the temple on
+30 August; anyone who cannot collect their certificate in person receives a
+digital copy by email or WhatsApp.
+
+**Paying:** by UPI at registration (or card/net banking if Razorpay is switched
+on). If a student has entered **at least one** competition held at the temple,
+they may instead pay ₹99 in cash on the day. If every competition they chose is
+online there is no venue to pay at, so the fee must be paid online — a rule
+enforced by the database, not just the form.
 
 ---
 
 ## Tech stack
 
 - **Vite 8** + **React 19** + **TypeScript 6**
-- **Tailwind CSS 4** (CSS-first `@theme` tokens, no `tailwind.config.js`)
-- **Supabase** — Postgres, Auth, and Row Level Security
-- **Motion** (Framer Motion) for animation, **canvas-confetti** (lazy-loaded)
-
-No state-management or data-fetching library: the catalogue is loaded once into
-a React context, and live numbers are fetched where they matter.
+- **Tailwind CSS 4** — CSS-first `@theme` tokens, no `tailwind.config.js`
+- **Supabase** — Postgres, Auth, and Edge Functions (Deno) for payments
+- **Direct UPI** — QR + deep link, verified by an organiser (no gateway)
+- **Razorpay** (optional) — cards and net banking, via Supabase Edge Functions
+- No animation library, no UI kit, no icon package — see *Weight* below
 
 ---
 
@@ -40,196 +46,192 @@ a React context, and live numbers are fetched where they matter.
 
 ```bash
 npm install
-cp .env.example .env     # then fill in your Supabase URL + anon key
+cp .env.example .env    # fill in your Supabase URL and anon key
 npm run dev
 ```
 
-If the env vars are missing the app renders a setup screen with instructions
-instead of a blank page.
+If `.env` is missing or unfilled the app renders a setup screen explaining what
+to do, rather than a blank page.
 
-### Supabase setup
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev server on :5173 |
+| `npm run build` | Typecheck, then production build |
+| `npm run typecheck` | Types only |
+| `npm run preview` | Serve the production build locally |
 
-1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard).
-2. In the **SQL editor**, run the files in this order:
-   - `supabase/schema.sql` — tables, views, functions, RLS policies
-   - `supabase/seed.sql` — 8 competitions, 97 songs/slokas/characters, 12 schools, settings
-3. Copy the **Project URL** and **anon key** from *Project Settings → API* into `.env`:
+---
 
-   ```
-   VITE_SUPABASE_URL=https://xxxxx.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
-   ```
+## Database setup
 
-Both values are safe in the browser — the anon key is only as powerful as the
-RLS policies allow, and those give it read access to the catalogue and nothing else.
+Run these in the Supabase **SQL editor**, in order:
 
-`supabase/patches.sql` applies one-off fixes to a database that has **already**
-been seeded (contact details, track name spellings). `seed.sql` is safe to
-re-run at any time; it never overwrites settings you have edited in the admin portal.
+| File | Purpose |
+|---|---|
+| `supabase/reset.sql` | Drops the old schema. **Deletes all registrations.** Backs up organiser logins first. |
+| `supabase/schema.sql` | Tables, constraints, row-level security, functions. Restores organiser logins. |
+| `supabase/seed.sql` | The five competitions, the bhajan song list, gallery, settings. |
+| `supabase/patches.sql` | Updates settings on an *already seeded* database (seed.sql never overwrites them). |
 
-### Creating the first organiser account
+`schema.sql` and `seed.sql` are safe to re-run. `reset.sql` is not — it is
+destructive by design, and only needed when rebuilding from an older version.
 
-1. **Authentication → Users → Add user.** Enter an email and password, and tick
-   *Auto Confirm User*. Copy the new user's UUID.
-2. In the SQL editor:
+Verify afterwards:
+
+```sql
+select name, sanskrit_name, mode, event_date, requires_selection from tracks order by sort_order;
+```
+
+You should get five rows, with `requires_selection` true only on Devotional
+Bhajan.
+
+---
+
+## Creating an organiser account
+
+Two steps, because Supabase Auth proves *who you are* and `admin_users` decides
+*what you may do*. A signed-in user with no `admin_users` row gets a polite
+"not on the organiser list" screen, which is what keeps the portal shut if
+someone signs up directly.
+
+1. **Supabase → Authentication → Users → Add user.** Enter an email and
+   password and tick **Auto Confirm User**. Copy the new user's UUID.
+
+2. **SQL editor:**
 
    ```sql
    insert into admin_users (id, full_name, email, role)
-   values ('paste-the-uuid', 'Your Name', 'you@example.com', 'super_admin');
+   values ('paste-the-uuid', 'Their Name', 'their@email.com', 'super_admin');
    ```
 
-3. Sign in at `/admin`. From there you can add the rest of the team through
-   **Organisers**, which walks you through the same two steps.
+Roles are `super_admin` (everything) and `judge` (registrations, scores, prizes
+and the day sheet, but not settings or the catalogue). After the first account
+exists, **Admin → Organisers** walks through adding the rest.
 
----
-
-## The slot limits, and why they actually hold
-
-The brief asked that no more than N students may pick the same devotional song
-or sloka. This is enforced **in the database**, not in the form.
-
-Each row in `selection_items` carries `max_slots` and a `taken_count` maintained
-by a trigger on `registration_tracks`, plus a constraint:
+If a login fails, the usual cause is a UUID mismatch:
 
 ```sql
-constraint selection_items_not_oversubscribed
-  check (taken_count >= 0 and taken_count <= max_slots)
+select u.id, u.email, a.role
+  from auth.users u
+  left join admin_users a on a.id = u.id;
 ```
 
-When two students submit for the last slot at the same instant, both trigger an
-`UPDATE` on the same row. Postgres takes a row lock, so the second transaction
-blocks until the first commits, then re-reads the committed count and fails the
-constraint. The second student gets a clear message asking them to choose again.
-
-This was verified against a real Postgres instance with two concurrent
-transactions racing for one slot: the loser blocked for exactly the duration the
-winner held its transaction open, then failed — and the final state was
-`taken_count = 2, max_slots = 2` with two actual rows. Never oversubscribed.
-
-The availability shown in the UI is a courtesy. The constraint is the guarantee.
-
-### Caps as seeded
-
-| Competition | Selection | Cap per option |
-|---|---|---|
-| Devotional Music | Song | 3 (Hare Krishna Kirtan: 5) |
-| Sloka Recitation | Sloka | 3 (Maha-mantra: 5) |
-| Classical Dance | Composition | 3 |
-| Elocution | Topic | 4 |
-| Fancy Dress | Character | 2 |
-| Skit & Drama | Episode | 2 (teams) |
-
-All editable from **Admin → Songs & slokas**. Lowering a cap below the number
-already taken is refused by the database.
+A `null` role means step 2 did not land.
 
 ---
 
-## Security model
+## Payments
 
-The public site talks to Postgres as the `anon` role. RLS is enabled on every table.
+The fee can be collected two ways, and both can run at once. Which methods
+students see is controlled from **Admin → Settings → How students pay**.
 
-- **Readable by anyone:** tracks, categories, schools, gallery, published
-  testimonials, public settings, and `selection_availability` (titles and
-  counts, no personal data).
-- **Not readable by anyone public:** `registrations`, `registration_tracks`,
-  `team_members`, `admin_users`, `audit_log`. There is no anon read policy at all.
-- **Writes** happen only through two `SECURITY DEFINER` functions:
-  - `submit_registration(jsonb)` — validates the registration window, class/age
-    band, track eligibility, team sizes and slot availability server-side.
-  - `lookup_registration(code, phone)` — requires *both* the code and the
-    matching guardian phone, so it cannot be used to enumerate participants.
+**UPI (default, no gateway).** Student pays to your UPI ID via QR or a
+tap-to-pay link, then reports the UTR reference. An organiser confirms it
+against the bank statement in **Admin → Verify payments**. No KYC, no fees,
+works immediately. The database refuses to let two students claim the same
+reference, and a payment awaiting verification is never billed again at the
+desk.
 
-Admin access is role-based:
+Set your UPI ID in Admin → Settings before opening registration — it ships
+blank on purpose, and the site says "UPI is not set up yet" rather than
+guessing an account.
 
-| Role | Can do |
-|---|---|
-| `super_admin` | Everything, including settings, catalogue and organiser accounts |
-| `school_coordinator` | Only their own school's registrations (enforced by RLS, not just the UI) |
-| `judge` | See all registrations and enter scores; no catalogue or settings access |
+**Razorpay (optional).** Adds cards and net banking with automatic
+verification. Needs KYC. See **[supabase/PAYMENTS.md](supabase/PAYMENTS.md)**
+for the whole thing — keys, secrets, Edge Functions, webhook and test cards.
 
----
-
-## Project layout
-
-```
-src/
-  components/
-    Decor.tsx          peacock feather, rangoli, diya, garland, star field
-    Icons.tsx          all icons, inline SVG
-    site/              nav, footer, track card, countdown, slot meter
-    ui/                Button, Form controls, Card/Modal/Badge primitives
-  context/             Auth, Festival catalogue, Toasts
-  hooks/               useAsync, useCountdown, useReveal, useMediaQuery
-  lib/
-    queries.ts         every database call
-    supabase.ts        client + friendly error messages
-    types.ts           mirrors the schema
-    utils.ts           accent palette, formatting, CSV export
-  pages/               public pages
-  pages/admin/         organiser portal (its own lazy-loaded bundle)
-supabase/
-  schema.sql           tables, RLS, triggers, functions
-  seed.sql             competitions, songs, slokas, schools, settings
-  patches.sql          one-off fixes for an already-seeded database
-```
-
----
-
-## Commands
+Short version:
 
 ```bash
-npm run dev        # dev server
-npm run build      # typecheck + production build
-npm run typecheck  # types only
-npm run lint       # oxlint
-npm run preview    # serve the production build
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=...
+supabase functions deploy create-order
+supabase functions deploy verify-payment
+supabase functions deploy razorpay-webhook
 ```
 
----
-
-## Deploying
-
-The app is a static SPA. On Vercel, import the repo and set
-`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables —
-`vercel.json` already rewrites all routes to `index.html` so deep links work.
-Any static host works the same way.
+Then add the webhook in the Razorpay dashboard and set
+`RAZORPAY_WEBHOOK_SECRET`.
 
 ---
 
-## Before you go live
+## Running the event
 
-- [ ] **Check the finale date.** Janmashtami moves with the lunar calendar. The
-      seed guesses **3 September 2026**; confirm against this year's panjika and
-      set it in *Admin → Settings → The event*. It drives the countdown.
-- [ ] **Replace the school list.** The 12 seeded schools are examples. Edit them
-      in *Admin → Schools*. Students who pick "my school is not listed" surface
-      there as one-click additions.
-- [ ] **Replace the sample testimonials.** They ship **unpublished** and are
-      clearly marked `[Sample — replace]`. They are placeholders, not real
-      quotes — write real ones (with the student's permission) before publishing.
-      Until then the home page shows an invitation to share a memory instead.
-- [ ] **Upload real gallery photos.** The gallery ships with generated
-      `placeholder:` tiles so the page looks intentional while empty. Upload to
-      Supabase Storage and paste the public URL in *Admin → Gallery & quotes*.
-- [ ] **Review the competition rules and time limits** in *Admin → Songs & slokas*
-      and the seed file — they are sensible defaults, not your actual rules.
-- [ ] **Open registration** in *Admin → Settings* when you are ready.
+**Admin → Day sheet** is the screen for the day itself. Filter to the temple
+day, print it, and you get a list with tick boxes for payment collected and
+certificate handed over. On screen those become buttons: *Collect ₹99* records
+a cash payment, *Mark given* records the certificate and marks the student
+present. It also shows the total cash you should have at the end.
 
-### A note on contact details
+**Notifications.** The bell in the admin header shows new registrations,
+reported UPI payments and completed payments, and the *Verify payments* nav
+item carries a live count of what is waiting. It polls every 45 seconds rather
+than using a realtime subscription — a websocket that quietly dies is a worse
+failure than a 45-second delay. "Seen" is per-browser, kept in localStorage.
 
-Contact details live in the `settings` table so you can change them from the
-admin portal without a rebuild — **not** in `.env`. Any `VITE_CONTACT_*` lines
-in your `.env` are unused and can be deleted. Set them in
-*Admin → Settings → Contact details*, or run `supabase/patches.sql`.
+There is an opt-in button in the bell for desktop notifications, which is
+worth turning on for whoever is watching registrations in the run-up.
+
+Note the honest limit: this only fires while an organiser has the portal open
+in a tab. Nobody is alerted overnight — email and WhatsApp reminders are still
+in [TODO.md](TODO.md).
+
+**Admin → Judging & prizes** takes scores, ranks live as you type, and assigns
+prizes. Students see their prize on the public status page as soon as it is
+saved.
+
+**Admin → Registrations → Export for Excel** gives one row per student with a
+column per competition, payment status, payment reference, attendance and
+certificate status.
 
 ---
 
-## Known notes
+## Deployment
 
-- `npm audit` flags a **react-router** advisory about RSC-mode CSRF. This app is
-  a client-rendered SPA and never enters RSC mode, so it does not apply. The only
-  "fix" npm offers is a downgrade to 7.11.0; we stay on 7.18.2 deliberately.
-- Sanskrit names are written in plain transliteration (`Chitrakala`, not
-  `Chitrakalā`). The display font has no glyph for the combining diacritics and
-  they rendered as visible artefacts, particularly on Android.
-- Every animation respects `prefers-reduced-motion`.
+Any static host. `vercel.json` is included with an SPA rewrite so deep links
+work. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the host's
+environment.
+
+Both values are safe in the browser — the anon key is protected by row-level
+security. The **service role key is not**, and belongs only in Supabase's own
+secret store, where the payment functions read it.
+
+---
+
+## Notes on the design
+
+**Song caps are enforced by the database, not the UI.** `selection_items`
+carries `taken_count` maintained by a trigger, guarded by
+`check (taken_count <= max_slots)`. Two students submitting for the last slot at
+the same instant serialise on the row lock; the second one's transaction fails
+the constraint and they are asked to pick another song. Verified with two
+genuinely concurrent transactions — the second blocked for 2 seconds waiting on
+the first, then failed cleanly, and the counter never exceeded the cap. The
+availability display is a courtesy; this is the guarantee.
+
+**The browser is never trusted with money.** `create-order` reads the fee from
+the registration row, so a tampered client cannot pay ₹1. A payment is only
+marked paid after its Razorpay HMAC signature is verified server-side. The
+webhook is a second, independent path so a student who closes the tab mid-payment
+still ends up marked paid.
+
+**Registrations have no public read path at all.** There is no anon SELECT
+policy on `registrations`. The public writes through one `SECURITY DEFINER`
+function and reads back through `lookup_registration`, which requires both the
+registration code *and* the guardian phone number, so the endpoint cannot be
+used to enumerate participants.
+
+**Weight.** Most visitors are on inexpensive Android phones over mobile data,
+so: no animation library (CSS handles the fades), no blurred backdrop layers
+(radial gradients instead — a large `filter: blur()` is the most common cause
+of a janky scroll on a cheap GPU), roman-only webfonts, and route-level code
+splitting. Razorpay's checkout script and the confetti library load only at the
+moment they are needed.
+
+---
+
+## Still open
+
+See **[TODO.md](TODO.md)** — suggestion lists for Art and Fancy Dress, and
+WhatsApp/email reminders. Neither blocks going live.

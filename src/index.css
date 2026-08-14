@@ -2,14 +2,14 @@
 
 /* ==========================================================================
    Utkarsh Heritage Festival — design tokens
-   A festival palette: marigold and saffron for warmth, peacock teal and blue
-   for Krishna, rose for celebration, gold for the filigree, deep indigo for
-   the night sky of Janmashtami.
+
+   Deliberately lean. Every animation and utility below is used somewhere; the
+   festival flourishes that were only decorative have been removed, because
+   this site is mostly read on inexpensive Android phones over patchy data.
    ========================================================================== */
 @theme {
   --font-display: 'Fraunces', ui-serif, Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-festive: 'Yatra One', ui-serif, serif;
 
   /* Marigold — the flower of every Indian festival */
   --color-marigold-50: #fff8ea;
@@ -35,7 +35,7 @@
   --color-peacock-800: #145a74;
   --color-peacock-900: #154b62;
 
-  /* Indigo night — the sky at midnight when Krishna appeared */
+  /* Indigo night */
   --color-night-50: #eef1ff;
   --color-night-100: #e0e5ff;
   --color-night-200: #c7cffe;
@@ -49,12 +49,12 @@
   --color-night-950: #1a1240;
   --color-night-990: #110c2b;
 
-  /* Rose — celebration, gulal, the colour of joy */
+  /* Rose — celebration */
   --color-rose-festival-400: #fb7185;
   --color-rose-festival-500: #f43f5e;
   --color-rose-festival-600: #e11d48;
 
-  /* Gold — the filigree, the lamp, the border */
+  /* Gold — filigree and lamps */
   --color-gold-300: #ffdf7e;
   --color-gold-400: #f7c948;
   --color-gold-500: #e0a80d;
@@ -74,25 +74,49 @@
   --shadow-lift: 0 22px 55px -24px rgb(26 18 64 / 0.4);
   --shadow-card: 0 1px 2px rgb(26 18 64 / 0.05), 0 12px 32px -18px rgb(26 18 64 / 0.28);
 
-  --animate-float: float 7s ease-in-out infinite;
-  --animate-float-slow: float 11s ease-in-out infinite;
-  --animate-spin-slow: spin 26s linear infinite;
-  --animate-spin-slower: spin 48s linear infinite;
+  --animate-rise: rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.2s ease-out both;
+  --animate-scale-in: scale-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-sheet-up: sheet-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-shimmer: shimmer 2.6s linear infinite;
   --animate-gradient: gradient-pan 9s ease infinite;
-  --animate-pop: pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --animate-rise: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-twinkle: twinkle 3.4s ease-in-out infinite;
-  --animate-marquee: marquee 38s linear infinite;
-  --animate-pulse-ring: pulse-ring 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0) rotate(0deg);
+  @keyframes rise {
+    from {
+      transform: translateY(14px);
+      opacity: 0;
     }
-    50% {
-      transform: translateY(-16px) rotate(2.5deg);
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes scale-in {
+    from {
+      transform: scale(0.96) translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
     }
   }
   @keyframes shimmer {
@@ -110,58 +134,6 @@
     }
     50% {
       background-position: 100% 50%;
-    }
-  }
-  @keyframes pop {
-    0% {
-      transform: scale(0.86);
-      opacity: 0;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-  @keyframes rise {
-    0% {
-      transform: translateY(22px);
-      opacity: 0;
-    }
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  @keyframes twinkle {
-    0%,
-    100% {
-      opacity: 0.25;
-      transform: scale(0.85);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.15);
-    }
-  }
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(-50%);
-    }
-  }
-  @keyframes pulse-ring {
-    0% {
-      transform: scale(0.9);
-      opacity: 0.7;
-    }
-    70% {
-      transform: scale(1.6);
-      opacity: 0;
-    }
-    100% {
-      opacity: 0;
     }
   }
 }
@@ -214,7 +186,6 @@
     color: var(--color-night-950);
   }
 
-  /* Firefox */
   * {
     scrollbar-color: var(--color-marigold-300) transparent;
   }
@@ -230,13 +201,10 @@
     border-radius: 99px;
     border: 3px solid var(--color-cream-50);
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-marigold-400);
-  }
 }
 
 /* ==========================================================================
-   Components & utilities
+   Components
    ========================================================================== */
 @layer components {
   /* Warm paper texture for light sections */
@@ -248,7 +216,7 @@
       radial-gradient(at 72% 92%, rgb(244 63 94 / 0.07) 0px, transparent 50%);
   }
 
-  /* The midnight sky of Janmashtami */
+  /* The midnight sky */
   .bg-night {
     background-color: var(--color-night-950);
     background-image:
@@ -298,48 +266,18 @@
     );
   }
 
-  /* Card that lifts and glows on hover */
+  /* Hover lift. Only transform and shadow animate, so it stays on the
+     compositor and does not trigger layout. */
   .card-lift {
     transition:
-      transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 0.3s ease;
-    will-change: transform;
+      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .card-lift:hover {
-    transform: translateY(-6px);
-    box-shadow: var(--shadow-lift);
-  }
-
-  /* Animated conic border for featured cards */
-  .ring-festival {
-    position: relative;
-  }
-  .ring-festival::before {
-    content: '';
-    position: absolute;
-    inset: -1.5px;
-    border-radius: inherit;
-    padding: 1.5px;
-    background: conic-gradient(
-      from var(--angle, 0deg),
-      var(--color-marigold-400),
-      var(--color-rose-festival-500),
-      var(--color-night-500),
-      var(--color-peacock-400),
-      var(--color-marigold-400)
-    );
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 0.35s ease;
-    pointer-events: none;
-  }
-  .ring-festival:hover::before {
-    opacity: 1;
+  @media (hover: hover) {
+    .card-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lift);
+    }
   }
 
   /* Shimmer sweep for the primary CTA */
@@ -362,50 +300,11 @@
     animation: var(--animate-shimmer);
     pointer-events: none;
   }
-
-  /* Layered dot grid for hero backdrops */
-  .bg-dots {
-    background-image: radial-gradient(rgb(26 18 64 / 0.09) 1px, transparent 1px);
-    background-size: 22px 22px;
-  }
-
-  .bg-dots-light {
-    background-image: radial-gradient(rgb(255 255 255 / 0.16) 1px, transparent 1px);
-    background-size: 26px 26px;
-  }
-
-  /* Full-bleed marquee strip */
-  .marquee-track {
-    display: flex;
-    width: max-content;
-    animation: var(--animate-marquee);
-  }
-  .marquee-mask {
-    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  }
-}
-
-@property --angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
 }
 
 @layer utilities {
   .stack-shadow {
     box-shadow: var(--shadow-card);
-  }
-
-  /* Hide scrollbar but keep scrolling (horizontal chip rows) */
-  .no-scrollbar {
-    scrollbar-width: none;
-  }
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .writing-vertical {
-    writing-mode: vertical-rl;
   }
 }
 
@@ -426,11 +325,29 @@
   }
 }
 
+/* ==========================================================================
+   Print — used by the admin day sheet
+   ========================================================================== */
 @media print {
   .no-print {
     display: none !important;
   }
+
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+
   body {
-    background: #fff;
+    background: #fff !important;
+  }
+
+  /* Keep table rows whole across page breaks */
+  tr {
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
   }
 }

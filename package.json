@@ -1,9 +1,9 @@
 {
   "name": "utkarsh-heritage-festival",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Utkarsh Heritage Festival — Guwahati. Public site + admin portal.",
+  "description": "Utkarsh Heritage Festival \u2014 Guwahati. Public site + admin portal.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -15,7 +15,7 @@
     "@supabase/supabase-js": "^2.110.2",
     "@tailwindcss/vite": "^4.3.2",
     "canvas-confetti": "^1.9.3",
-    "motion": "^12.34.3",
+    "qrcode-generator": "^2.0.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",

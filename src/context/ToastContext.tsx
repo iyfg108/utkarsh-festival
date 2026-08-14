@@ -1,6 +1,5 @@
 import { createContext, use, useCallback, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 
 type ToastKind = 'success' | 'error' | 'info'
@@ -87,35 +86,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         role="status"
         aria-live="polite"
       >
-        <AnimatePresence initial={false}>
-          {toasts.map((t) => (
-            <motion.div
-              key={t.id}
-              layout
-              initial={{ opacity: 0, y: 18, scale: 0.94 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-              className={cn(
-                'pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur',
-                STYLES[t.kind].wrap,
-              )}
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              'animate-sheet-up pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg',
+              STYLES[t.kind].wrap,
+            )}
+          >
+            {STYLES[t.kind].icon}
+            <span className="leading-snug">{t.message}</span>
+            <button
+              type="button"
+              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+              className="-mr-1 ml-auto shrink-0 rounded-lg p-1 opacity-50 transition hover:opacity-100"
+              aria-label="Dismiss"
             >
-              {STYLES[t.kind].icon}
-              <span className="leading-snug">{t.message}</span>
-              <button
-                type="button"
-                onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-                className="-mr-1 ml-auto shrink-0 rounded-lg p-1 opacity-50 transition hover:opacity-100"
-                aria-label="Dismiss"
-              >
-                <svg viewBox="0 0 20 20" className="size-4" fill="currentColor">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              <svg viewBox="0 0 20 20" className="size-4" fill="currentColor">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            </button>
+          </div>
+        ))}
       </div>
     </ToastContext>
   )

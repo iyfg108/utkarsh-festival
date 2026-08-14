@@ -1,4 +1,5 @@
-import { PeacockFeather, AuroraBlobs } from '@/components/Decor'
+import { SoftGlow } from '@/components/Decor'
+import { Brand } from '@/components/Brand'
 
 /**
  * Shown instead of the site when the Supabase env vars are missing, so a
@@ -7,17 +8,9 @@ import { PeacockFeather, AuroraBlobs } from '@/components/Decor'
 export function SetupNotice() {
   return (
     <div className="relative grid min-h-dvh place-items-center overflow-hidden bg-paper px-4 py-16">
-      <AuroraBlobs />
+      <SoftGlow />
       <div className="relative w-full max-w-2xl rounded-4xl border border-night-950/10 bg-white p-8 stack-shadow sm:p-12">
-        <div className="flex items-center gap-3">
-          <PeacockFeather className="h-14 w-auto" />
-          <div>
-            <h1 className="font-display text-3xl font-black text-night-950">Utkarsh</h1>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-marigold-600">
-              Heritage Festival
-            </p>
-          </div>
-        </div>
+        <Brand size="lg" />
 
         <h2 className="mt-8 text-2xl font-black text-night-950">Almost there — one setup step</h2>
         <p className="mt-3 text-[15px] leading-relaxed text-night-950/70">

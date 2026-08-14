@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/context/AuthContext'
-import { useFestival } from '@/context/FestivalContext'
 import { useToast } from '@/context/ToastContext'
 import { fetchAdminUsers, logAudit, updateAdminUser } from '@/lib/queries'
 import { friendlyError } from '@/lib/supabase'
@@ -23,23 +22,19 @@ const ROLES: { value: AdminRole; label: string; blurb: string }[] = [
   {
     value: 'super_admin',
     label: 'Super admin',
-    blurb: 'Everything — settings, catalogue, all registrations, and managing these accounts.',
-  },
-  {
-    value: 'school_coordinator',
-    label: 'School coordinator',
-    blurb: 'Sees and scores only the registrations from their own school.',
+    blurb:
+      'Everything — settings, the song list, the gallery, all registrations, payments, and managing these accounts.',
   },
   {
     value: 'judge',
     label: 'Judge',
-    blurb: 'Sees all registrations and enters scores, but cannot change the catalogue or settings.',
+    blurb:
+      'Sees registrations, enters scores and prizes, and works the day sheet. Cannot change settings or the catalogue.',
   },
 ]
 
 export default function UsersAdmin() {
   const { admin: me } = useAuth()
-  const { schools } = useFestival()
   const toast = useToast()
   const { data, loading, error, reload } = useAsync(() => fetchAdminUsers(), [])
   const [howTo, setHowTo] = useState(false)
@@ -47,14 +42,6 @@ export default function UsersAdmin() {
   const rows = data ?? []
 
   async function patch(user: AdminUser, changes: Partial<AdminUser>) {
-    // A coordinator without a school would be rejected by the DB check anyway.
-    if (
-      (changes.role ?? user.role) === 'school_coordinator' &&
-      !(changes.school_id ?? user.school_id)
-    ) {
-      toast.error('Pick a school first — a coordinator must be tied to one.')
-      return
-    }
     try {
       await updateAdminUser(user.id, changes)
       await logAudit('update', 'admin_user', user.id, changes)
@@ -86,12 +73,11 @@ export default function UsersAdmin() {
       ) : (
         <div className="overflow-hidden rounded-3xl border border-night-950/8 bg-white stack-shadow">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[48rem] text-left text-sm">
+            <table className="w-full min-w-[40rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-night-950/8 bg-cream-50/70 text-[11px] font-bold uppercase tracking-wider text-night-950/50">
                   <th className="px-5 py-3.5">Person</th>
                   <th className="px-4 py-3.5">Role</th>
-                  <th className="px-4 py-3.5">School</th>
                   <th className="px-4 py-3.5">Active</th>
                   <th className="px-4 py-3.5">Added</th>
                 </tr>
@@ -125,7 +111,7 @@ export default function UsersAdmin() {
                           value={u.role}
                           disabled={isMe}
                           onChange={(e) => patch(u, { role: e.target.value as AdminRole })}
-                          className="min-w-44 py-2 text-[13px]"
+                          className="min-w-40 py-2 text-[13px]"
                         >
                           {ROLES.map((r) => (
                             <option key={r.value} value={r.value}>
@@ -133,25 +119,6 @@ export default function UsersAdmin() {
                             </option>
                           ))}
                         </Select>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        {u.role === 'school_coordinator' ? (
-                          <Select
-                            value={u.school_id ?? ''}
-                            onChange={(e) => patch(u, { school_id: e.target.value || null })}
-                            className="min-w-44 py-2 text-[13px]"
-                          >
-                            <option value="">Choose a school…</option>
-                            {schools.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
-                          </Select>
-                        ) : (
-                          <span className="text-[13px] text-night-950/35">All schools</span>
-                        )}
                       </td>
 
                       <td className="px-4 py-3.5">
@@ -178,7 +145,7 @@ export default function UsersAdmin() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         {ROLES.map((r) => (
           <div
             key={r.value}
@@ -214,9 +181,8 @@ export default function UsersAdmin() {
             <div>
               <p className="font-bold text-night-950">Create the login</p>
               <p className="mt-1 text-sm leading-relaxed text-night-950/65">
-                In Supabase go to <strong>Authentication → Users → Add user</strong>. Enter their
-                email and a temporary password, and tick <em>Auto Confirm User</em>. Copy the new
-                user's UUID.
+                Go to <strong>Authentication → Users → Add user</strong>. Enter their email and a
+                temporary password, and tick <em>Auto Confirm User</em>. Copy the new user's UUID.
               </p>
             </div>
           </li>
@@ -235,11 +201,10 @@ values (
   'paste-the-uuid-here',
   'Their Name',
   'their@email.com',
-  'judge'   -- or 'super_admin' / 'school_coordinator'
+  'judge'   -- or 'super_admin'
 );`}</code>
               </pre>
               <p className="mt-3 text-sm leading-relaxed text-night-950/65">
-                For a school coordinator, also set <code className="rounded bg-night-950/6 px-1.5 py-0.5 font-mono text-[12px]">school_id</code>.
                 They can then sign in at <strong>/admin</strong> and change their password.
               </p>
             </div>

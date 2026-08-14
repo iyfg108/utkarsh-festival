@@ -1,17 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { motion } from 'motion/react'
 import { useFestival } from '@/context/FestivalContext'
-import { formatLongDate } from '@/lib/utils'
+import { payForRegistration } from '@/lib/razorpay'
+import { friendlyError } from '@/lib/supabase'
+import { cn, formatLongDate, formatMoney } from '@/lib/utils'
 import { usePrefersReducedMotion } from '@/hooks/useMediaQuery'
-import { ButtonLink } from '@/components/ui/Button'
-import { CheckIcon, ClipboardIcon, CalendarIcon, MapPinIcon } from '@/components/Icons'
-import { Lotus, MarigoldGarland, StarField, Rangoli } from '@/components/Decor'
+import type { PaymentMethod } from '@/lib/types'
+import { Button, ButtonLink } from '@/components/ui/Button'
+import {
+  CalendarIcon,
+  CheckIcon,
+  ClipboardIcon,
+  LockIcon,
+  MapPinIcon,
+} from '@/components/Icons'
+import { Lotus, MarigoldGarland, StarField } from '@/components/Decor'
+import { UpiPayPanel } from '@/components/site/UpiPayPanel'
 
 interface SuccessState {
   regCode: string
   fullName: string
   entries: string[]
+  paid: boolean
+  method: PaymentMethod
+  fee: number
+  registrationId?: string
+  holdExpiresAt?: string | null
+  paymentError?: string
 }
 
 export default function RegisterSuccess() {
@@ -20,6 +35,9 @@ export default function RegisterSuccess() {
   const { settings } = useFestival()
   const reduced = usePrefersReducedMotion()
   const [copied, setCopied] = useState(false)
+  const [paid, setPaid] = useState(state?.paid ?? false)
+  const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState<string | null>(state?.paymentError ?? null)
   const fired = useRef(false)
 
   useEffect(() => {
@@ -31,16 +49,14 @@ export default function RegisterSuccess() {
 
     // Loaded on demand — no reason to ship a confetti library to every visitor.
     void import('canvas-confetti').then(({ default: confetti }) => {
-      confetti({ particleCount: 90, spread: 78, origin: { y: 0.35 }, colors: colours })
+      confetti({ particleCount: 80, spread: 74, origin: { y: 0.35 }, colors: colours })
       timers.push(
         window.setTimeout(
-          () =>
-            confetti({ particleCount: 55, angle: 60, spread: 62, origin: { x: 0, y: 0.6 }, colors: colours }),
+          () => confetti({ particleCount: 45, angle: 60, spread: 58, origin: { x: 0, y: 0.6 }, colors: colours }),
           220,
         ),
         window.setTimeout(
-          () =>
-            confetti({ particleCount: 55, angle: 120, spread: 62, origin: { x: 1, y: 0.6 }, colors: colours }),
+          () => confetti({ particleCount: 45, angle: 120, spread: 58, origin: { x: 1, y: 0.6 }, colors: colours }),
           380,
         ),
       )
@@ -49,10 +65,11 @@ export default function RegisterSuccess() {
     return () => timers.forEach(window.clearTimeout)
   }, [state, reduced])
 
-  // Reached directly without registering — nothing to show.
   if (!state?.regCode) return <Navigate to="/register" replace />
 
   const event = settings?.event
+  const atVenue = state.method === 'pay_at_venue'
+  const byUpi = state.method === 'upi_manual'
 
   async function copyCode() {
     try {
@@ -64,61 +81,62 @@ export default function RegisterSuccess() {
     }
   }
 
+  async function retryPayment() {
+    if (!state?.registrationId) return
+    setPaying(true)
+    setPayError(null)
+    try {
+      const outcome = await payForRegistration(state.registrationId)
+      if (outcome.status === 'paid' || outcome.status === 'already_paid') setPaid(true)
+    } catch (err) {
+      setPayError(friendlyError(err))
+    } finally {
+      setPaying(false)
+    }
+  }
+
   return (
-    <section className="relative isolate overflow-hidden px-4 py-16 sm:px-6 lg:px-8">
-      <Rangoli
-        className="absolute left-1/2 top-10 -z-10 size-[40rem] -translate-x-1/2 text-marigold-300/25 animate-spin-slower"
-        petals={22}
-      />
-
+    <section className="px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
-        <motion.div
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-          className="mx-auto grid size-24 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lift"
+        <div
+          className={cn(
+            'mx-auto grid size-20 place-items-center rounded-full shadow-lift',
+            paid || atVenue
+              ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
+              : 'bg-gradient-to-br from-marigold-400 to-marigold-600',
+          )}
         >
-          <CheckIcon className="size-12 text-white" strokeWidth={3} />
-        </motion.div>
+          <CheckIcon className="size-10 text-white" strokeWidth={3} />
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-8 text-center"
-        >
-          <h1 className="text-4xl font-black leading-tight text-night-950 sm:text-5xl">
+        <div className="mt-7 text-center">
+          <h1 className="text-3xl font-black leading-tight text-night-950 sm:text-5xl">
             You're in, {state.fullName.split(' ')[0]}!
           </h1>
-          <p className="mx-auto mt-4 max-w-lg text-lg leading-relaxed text-night-950/65">
-            Your place at Utkarsh {event?.edition ?? ''} is confirmed. Save the code below — you
-            will need it to check your status later.
+          <p className="mx-auto mt-3.5 max-w-lg text-base leading-relaxed text-night-950/65 sm:text-lg">
+            Your place at Utkarsh {event?.edition ?? ''} is saved. Keep the code below — you need it
+            to check your status.
           </p>
-        </motion.div>
+        </div>
 
         {/* code card */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mt-10 overflow-hidden rounded-4xl bg-night px-7 py-9 text-center"
-        >
-          <StarField count={30} />
-          <MarigoldGarland className="absolute inset-x-0 top-0 opacity-80" />
-          <Lotus className="absolute -bottom-6 -right-6 size-28 text-white/10" />
+        <div className="relative mt-8 overflow-hidden rounded-4xl bg-night px-6 py-8 text-center">
+          <StarField count={14} />
+          <MarigoldGarland className="absolute inset-x-0 top-0" />
+          <Lotus className="absolute -bottom-6 -right-6 size-24 text-white/10" />
 
           <div className="relative">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-marigold-300">
               Your registration code
             </p>
-            <p className="mt-3 font-mono text-4xl font-black tracking-[0.14em] text-cream-50 sm:text-5xl">
+            <p className="mt-2.5 font-mono text-3xl font-black tracking-[0.12em] text-cream-50 sm:text-5xl">
               {state.regCode}
             </p>
 
             <button
               type="button"
               onClick={copyCode}
-              className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-bold text-cream-100 transition hover:bg-white/20"
+              className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-bold text-cream-100 transition hover:bg-white/20"
             >
               {copied ? (
                 <>
@@ -133,19 +151,94 @@ export default function RegisterSuccess() {
               )}
             </button>
           </div>
-        </motion.div>
+        </div>
+
+        {/* payment */}
+        {byUpi && !paid && state.registrationId && settings?.payment ? (
+          <div className="mt-5">
+            <UpiPayPanel
+              registrationId={state.registrationId}
+              regCode={state.regCode}
+              amount={state.fee}
+              payment={settings.payment}
+              holdExpiresAt={state.holdExpiresAt}
+            />
+          </div>
+        ) : (
+        <div
+          className={cn(
+            'mt-5 rounded-4xl border-2 p-6',
+            paid
+              ? 'border-emerald-200 bg-emerald-50'
+              : atVenue
+                ? 'border-marigold-200 bg-marigold-50'
+                : 'border-rose-300 bg-rose-50',
+          )}
+        >
+          {paid ? (
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-500 text-white">
+                <CheckIcon className="size-5" strokeWidth={3} />
+              </span>
+              <div>
+                <p className="font-bold text-emerald-900">
+                  {formatMoney(state.fee)} paid — you are all set
+                </p>
+                <p className="mt-0.5 text-sm leading-relaxed text-emerald-800/80">
+                  Nothing more to do. We will be in touch before the competition.
+                </p>
+              </div>
+            </div>
+          ) : atVenue ? (
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-marigold-500 text-white">
+                <CalendarIcon className="size-5" />
+              </span>
+              <div>
+                <p className="font-bold text-marigold-900">
+                  Bring {formatMoney(state.fee)} on the day
+                </p>
+                <p className="mt-0.5 text-sm leading-relaxed text-marigold-900/80">
+                  Pay in cash at {event?.venue ?? 'the temple'} on{' '}
+                  {event?.onsite_date ? formatLongDate(event.onsite_date) : '30 August'}. Please
+                  arrive a little early so the desk is not rushed — mention your registration code.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="font-bold text-rose-900">
+                The {formatMoney(state.fee)} fee has not been paid yet
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-rose-800/85">
+                Your place is saved, but your entry is only confirmed once the fee is paid.
+                {payError ? ` ${payError}` : ''}
+              </p>
+              {state.registrationId ? (
+                <Button
+                  className="mt-4"
+                  loading={paying}
+                  onClick={retryPayment}
+                  icon={<LockIcon className="size-4" />}
+                >
+                  Pay {formatMoney(state.fee)} now
+                </Button>
+              ) : (
+                <ButtonLink to="/status" className="mt-4" variant="outline">
+                  Pay from the status page
+                </ButtonLink>
+              )}
+            </div>
+          )}
+        </div>
+        )}
 
         {/* entries */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35, duration: 0.6 }}
-          className="mt-6 rounded-4xl border border-night-950/8 bg-white p-7 stack-shadow"
-        >
+        <div className="mt-5 rounded-4xl border border-night-950/8 bg-white p-6 stack-shadow">
           <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-night-950/45">
             You are entered in
           </h2>
-          <ul className="mt-4 flex flex-wrap gap-2">
+          <ul className="mt-3.5 flex flex-wrap gap-2">
             {state.entries.map((e) => (
               <li
                 key={e}
@@ -156,50 +249,41 @@ export default function RegisterSuccess() {
             ))}
           </ul>
 
-          <div className="mt-7 space-y-4 border-t border-night-950/8 pt-6">
+          <div className="mt-6 space-y-4 border-t border-night-950/8 pt-5">
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-night-950/45">
               What happens next
             </h2>
 
+            {event?.online_date ? (
+              <Step
+                icon={<CalendarIcon className="size-5" />}
+                title={formatLongDate(event.online_date)}
+                body="Online competitions. We send the link to your email or WhatsApp a day before."
+              />
+            ) : null}
+            {event?.onsite_date ? (
+              <Step
+                icon={<MapPinIcon className="size-5" />}
+                title={formatLongDate(event.onsite_date)}
+                body={`Competitions at ${event.venue}. Prizes, certificates and prasadam on the day.`}
+              />
+            ) : null}
             <Step
-              n={1}
-              title="Your school round"
-              body={
-                event?.stage1_window ??
-                'We will confirm the date with your school and let you know.'
-              }
-              icon={<CalendarIcon className="size-5" />}
-            />
-            <Step
-              n={2}
-              title="Shortlisting"
-              body="If you are selected, we call the guardian number you gave us — and this shows up on the status page."
               icon={<CheckIcon className="size-5" />}
-            />
-            <Step
-              n={3}
-              title="The grand finale"
-              body={`${event?.venue ?? 'ISKCON Ulubari'}${
-                event?.stage2_date ? ` · ${formatLongDate(event.stage2_date)}` : ''
-              }`}
-              icon={<MapPinIcon className="size-5" />}
+              title="Your certificate"
+              body="Collect it at the temple, or we will send a digital copy to your email or WhatsApp."
             />
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-8 flex flex-wrap justify-center gap-3"
-        >
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
           <ButtonLink to="/status" variant="outline">
             Check my status
           </ButtonLink>
-          <ButtonLink to="/tracks">Explore other competitions</ButtonLink>
-        </motion.div>
+          <ButtonLink to="/competitions">Explore other competitions</ButtonLink>
+        </div>
 
-        <p className="mt-8 text-center text-sm text-night-950/50">
+        <p className="mt-6 text-center text-sm text-night-950/50">
           Take a screenshot of this page, or write the code down.{' '}
           <Link to="/contact" className="font-semibold text-peacock-700 underline underline-offset-2">
             Need help?
@@ -211,25 +295,20 @@ export default function RegisterSuccess() {
 }
 
 function Step({
-  n,
+  icon,
   title,
   body,
-  icon,
 }: {
-  n: number
+  icon: React.ReactNode
   title: string
   body: string
-  icon: React.ReactNode
 }) {
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-3.5">
       <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-marigold-100 text-marigold-700">
         {icon}
       </span>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-night-950/40">
-          Step {n}
-        </p>
         <p className="font-bold text-night-950">{title}</p>
         <p className="mt-0.5 text-sm leading-relaxed text-night-950/60">{body}</p>
       </div>

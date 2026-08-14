@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { SetupNotice } from '@/components/SetupNotice'
 import { FestivalProvider } from '@/context/FestivalContext'
@@ -10,12 +10,11 @@ import { LoadingBlock } from '@/components/ui/Primitives'
 
 // The landing pages a student hits first stay in the main bundle.
 import Home from '@/pages/Home'
-import Tracks from '@/pages/Tracks'
-import TrackDetail from '@/pages/TrackDetail'
+import Competitions from '@/pages/Competitions'
+import CompetitionDetail from '@/pages/CompetitionDetail'
 import NotFound from '@/pages/NotFound'
 
 // Everything else loads on demand, so the first paint on a phone stays light.
-const About = lazy(() => import('@/pages/About'))
 const Gallery = lazy(() => import('@/pages/Gallery'))
 const Faq = lazy(() => import('@/pages/Faq'))
 const Contact = lazy(() => import('@/pages/Contact'))
@@ -36,15 +35,20 @@ export default function App() {
           <Routes>
             <Route element={<SiteLayout />}>
               <Route index element={<Home />} />
-              <Route path="tracks" element={<Tracks />} />
-              <Route path="tracks/:slug" element={<TrackDetail />} />
-              <Route path="about" element={<About />} />
+              <Route path="competitions" element={<Competitions />} />
+              <Route path="competitions/:slug" element={<CompetitionDetail />} />
               <Route path="gallery" element={<Gallery />} />
               <Route path="faq" element={<Faq />} />
               <Route path="contact" element={<Contact />} />
               <Route path="register" element={<Register />} />
               <Route path="register/success" element={<RegisterSuccess />} />
               <Route path="status" element={<Status />} />
+
+              {/* Older links from the first version of the site. */}
+              <Route path="tracks" element={<Navigate to="/competitions" replace />} />
+              <Route path="tracks/:slug" element={<Navigate to="/competitions" replace />} />
+              <Route path="about" element={<Navigate to="/" replace />} />
+
               <Route path="*" element={<NotFound />} />
             </Route>
 

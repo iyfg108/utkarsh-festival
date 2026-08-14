@@ -1,0 +1,22 @@
+# Supabase CLI configuration.
+#
+# The three payment functions are called by students who are NOT signed in —
+# there are no student accounts — so JWT verification is off for them. They are
+# not unprotected: create-order needs an unguessable registration UUID, and both
+# verify-payment and razorpay-webhook reject anything without a valid Razorpay
+# HMAC signature.
+
+project_id = "utkarsh"
+
+[functions.create-order]
+verify_jwt = false
+
+[functions.verify-payment]
+verify_jwt = false
+
+[functions.razorpay-webhook]
+verify_jwt = false
+
+# send-email is deliberately ABSENT from this file, so it keeps the default
+# verify_jwt = true. An unauthenticated endpoint that sends mail is a spam
+# relay. It additionally checks the caller against admin_users.

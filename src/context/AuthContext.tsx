@@ -11,7 +11,6 @@ interface AuthValue {
   /** Signed in AND present in admin_users with is_active. */
   isAdmin: boolean
   isSuperAdmin: boolean
-  isCoordinator: boolean
   isJudge: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
@@ -95,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isAdmin: Boolean(admin?.is_active),
       isSuperAdmin: admin?.is_active === true && admin.role === 'super_admin',
-      isCoordinator: admin?.is_active === true && admin.role === 'school_coordinator',
       isJudge: admin?.is_active === true && admin.role === 'judge',
       signIn,
       signOut,

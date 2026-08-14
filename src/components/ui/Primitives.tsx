@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { useReveal } from '@/hooks/useReveal'
 import { usePrefersReducedMotion } from '@/hooks/useMediaQuery'
@@ -278,31 +277,33 @@ export function Modal({
     xl: 'max-w-4xl',
   }
 
+  // Close on Escape — expected of any dialog.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+
   return (
-    <AnimatePresence>
-      {open ? (
-        <div className="fixed inset-0 z-[90] flex items-end justify-center p-0 sm:items-center sm:p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="absolute inset-0 bg-night-950/55 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label={title}
-            initial={{ opacity: 0, y: 30, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-            className={cn(
-              'relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl',
-              SIZES[size],
-            )}
-          >
+    <div className="fixed inset-0 z-[90] flex items-end justify-center p-0 sm:items-center sm:p-6">
+      <div
+        className="animate-fade-in absolute inset-0 bg-night-950/55"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={cn(
+          'animate-scale-in relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl',
+          SIZES[size],
+        )}
+      >
             <div className="flex items-start justify-between gap-4 border-b border-night-950/8 px-6 py-5">
               <div>
                 <h2 className="text-xl font-black text-night-950">{title}</h2>
@@ -322,15 +323,13 @@ export function Modal({
 
             <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
 
-            {footer ? (
-              <div className="flex flex-wrap justify-end gap-2 border-t border-night-950/8 bg-cream-50/60 px-6 py-4">
-                {footer}
-              </div>
-            ) : null}
-          </motion.div>
-        </div>
-      ) : null}
-    </AnimatePresence>
+        {footer ? (
+          <div className="flex flex-wrap justify-end gap-2 border-t border-night-950/8 bg-cream-50/60 px-6 py-4">
+            {footer}
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }
 

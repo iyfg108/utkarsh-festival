@@ -1,4 +1,9 @@
-import type { AccentKey, Category } from './types'
+import type {
+  AccentKey,
+  CertificateStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from './types'
 
 /** Tiny classnames helper — no dependency needed for what we do here. */
 export function cn(...parts: (string | false | null | undefined)[]): string {
@@ -108,14 +113,87 @@ export function accent(key: string | null | undefined): AccentStyles {
 
 /* ------------------------------------------------------------------------- */
 
-export function categoryForClass(
-  categories: Category[],
-  classLevel: number | null,
-): Category | null {
-  if (!classLevel) return null
-  return (
-    categories.find((c) => classLevel >= c.min_class && classLevel <= c.max_class) ?? null
-  )
+/* -------------------------------------------------------------------------
+   Payment & certificate labels — one source of truth for the whole app.
+   ------------------------------------------------------------------------- */
+
+export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
+  pending: 'Not paid',
+  awaiting_verification: 'Awaiting check',
+  paid: 'Paid',
+  failed: 'Failed',
+  waived: 'Waived',
+}
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  razorpay: 'Card / net banking',
+  upi_manual: 'UPI',
+  pay_at_venue: 'At the venue',
+}
+
+/**
+ * Builds the `upi://pay` deep link. Tapping it on a phone opens GPay / PhonePe
+ * / Paytm with the amount already filled in; the same string is what the QR
+ * code encodes, so scanning and tapping lead to exactly the same screen.
+ */
+export function upiPayUri(opts: {
+  vpa: string
+  payeeName: string
+  amount: number
+  note?: string
+}): string {
+  const params = new URLSearchParams({
+    pa: opts.vpa,
+    pn: opts.payeeName,
+    am: String(opts.amount),
+    cu: 'INR',
+  })
+  if (opts.note) params.set('tn', opts.note)
+  return `upi://pay?${params.toString()}`
+}
+
+export const CERTIFICATE_LABEL: Record<CertificateStatus, string> = {
+  pending: 'Not issued',
+  collected: 'Collected in person',
+  emailed: 'Sent by email',
+  whatsapp_sent: 'Sent on WhatsApp',
+}
+
+/**
+ * "in 45 minutes" / "in 2 hours" — for telling a student how long their
+ * unpaid song slot is held. Returns null once it has passed.
+ */
+export function timeRemaining(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const ms = new Date(iso).getTime() - Date.now()
+  if (Number.isNaN(ms) || ms <= 0) return null
+
+  const mins = Math.round(ms / 60_000)
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'}`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'}`
+  const days = Math.round(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'}`
+}
+
+/** "just now" / "12 min ago" / "3 hours ago" — for the activity feed. */
+export function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const ms = Date.now() - new Date(iso).getTime()
+  if (Number.isNaN(ms)) return ''
+  if (ms < 60_000) return 'just now'
+
+  const mins = Math.floor(ms / 60_000)
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`
+  return formatDate(iso)
+}
+
+export function formatMoney(rupees: number): string {
+  return `₹${rupees.toLocaleString('en-IN')}`
 }
 
 export function formatDate(value: string | null | undefined, withTime = false): string {

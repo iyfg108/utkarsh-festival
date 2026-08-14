@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'motion/react'
 import { useAuth } from '@/context/AuthContext'
 import { friendlyError } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Form'
 import { ArrowRightIcon, LockIcon } from '@/components/Icons'
-import { AuroraBlobs, PeacockFeather, Rangoli } from '@/components/Decor'
+import { Rangoli, SoftGlow } from '@/components/Decor'
+import { Brand } from '@/components/Brand'
 
 export default function AdminLogin() {
   const { signIn } = useAuth()
@@ -37,22 +37,16 @@ export default function AdminLogin() {
 
   return (
     <div className="relative isolate grid min-h-dvh place-items-center overflow-hidden bg-paper px-4 py-16">
-      <AuroraBlobs />
+      <SoftGlow />
       <Rangoli
-        className="absolute -right-40 -top-32 -z-10 size-[32rem] text-marigold-300/30 animate-spin-slower"
-        petals={18}
+        className="absolute -right-40 -top-32 -z-10 size-[30rem] text-marigold-300/30"
+        petals={12}
       />
 
-      <motion.div
-        initial={{ opacity: 0, y: 22 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-md"
-      >
+      <div className="animate-rise w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
-          <PeacockFeather className="h-16 w-auto" />
-          <h1 className="mt-4 font-display text-3xl font-black text-night-950">Organiser portal</h1>
-          <p className="mt-1 text-sm text-night-950/55">Utkarsh Heritage Festival</p>
+          <Brand size="lg" />
+          <h1 className="mt-4 font-display text-2xl font-black text-night-950">Organiser portal</h1>
         </div>
 
         <form
@@ -82,13 +76,9 @@ export default function AdminLogin() {
           </div>
 
           {error ? (
-            <motion.p
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
-            >
+            <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
               {error}
-            </motion.p>
+            </p>
           ) : null}
 
           <Button
@@ -116,7 +106,7 @@ export default function AdminLogin() {
             Back to the festival site
           </Link>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

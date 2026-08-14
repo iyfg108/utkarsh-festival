@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAsync } from '@/hooks/useAsync'
 import { fetchGallery } from '@/lib/queries'
 import { cn } from '@/lib/utils'
@@ -18,6 +17,16 @@ export default function Gallery() {
   const { data, loading, error, reload } = useAsync(() => fetchGallery(), [])
   const [year, setYear] = useState<number | null>(null)
   const [lightbox, setLightbox] = useState<GalleryItem | null>(null)
+
+  // Escape closes the lightbox.
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightbox(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [lightbox])
 
   const items = data ?? []
   const years = useMemo(
@@ -114,35 +123,27 @@ export default function Gallery() {
       </section>
 
       {/* lightbox */}
-      <AnimatePresence>
-        {lightbox ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[95] flex items-center justify-center bg-night-950/90 p-4 backdrop-blur"
+      {lightbox ? (
+        <div
+          className="animate-fade-in fixed inset-0 z-[95] flex items-center justify-center bg-night-950/92 p-4"
+          onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.title ?? 'Photo'}
+        >
+          <button
+            type="button"
             onClick={() => setLightbox(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-label={lightbox.title ?? 'Photo'}
+            aria-label="Close"
+            className="absolute right-4 top-4 grid size-11 place-items-center rounded-2xl border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
           >
-            <button
-              type="button"
-              onClick={() => setLightbox(null)}
-              aria-label="Close"
-              className="absolute right-4 top-4 grid size-11 place-items-center rounded-2xl border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
-            >
-              <CloseIcon className="size-5" />
-            </button>
+            <CloseIcon className="size-5" />
+          </button>
 
-            <motion.figure
-              initial={{ scale: 0.94, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 12 }}
-              transition={{ type: 'spring', stiffness: 340, damping: 32 }}
-              className="max-h-full w-full max-w-4xl overflow-hidden rounded-3xl bg-night-990"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <figure
+            className="animate-scale-in max-h-full w-full max-w-4xl overflow-hidden rounded-3xl bg-night-990"
+            onClick={(e) => e.stopPropagation()}
+          >
               {lightbox.image_url.startsWith('placeholder:') ? (
                 <PlaceholderTile
                   seed={lightbox.image_url}
@@ -170,11 +171,10 @@ export default function Gallery() {
                     {lightbox.caption}
                   </p>
                 ) : null}
-              </figcaption>
-            </motion.figure>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+            </figcaption>
+          </figure>
+        </div>
+      ) : null}
     </>
   )
 }

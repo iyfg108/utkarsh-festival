@@ -1,24 +1,20 @@
 import { supabase } from './supabase'
 import type {
   AdminUser,
-  Category,
+  CreateOrderResult,
   FestivalSettings,
   GalleryItem,
   PublicStats,
   Registration,
   RegistrationDraft,
   RegistrationRow,
-  School,
   SelectionAvailability,
   SelectionItem,
   StatusResult,
   SubmitResult,
-  Testimonial,
   Track,
-  TrackCategory,
 } from './types'
 
-/** Throws on error so callers can rely on a value. */
 function unwrap<T>({ data, error }: { data: T | null; error: unknown }): T {
   if (error) throw error
   return data as T
@@ -28,40 +24,34 @@ function unwrap<T>({ data, error }: { data: T | null; error: unknown }): T {
    Public catalogue
    ========================================================================= */
 
-export async function fetchCategories(): Promise<Category[]> {
-  return unwrap(
-    await supabase.from('categories').select('*').order('sort_order'),
-  )
-}
-
 export async function fetchTracks(includeInactive = false): Promise<Track[]> {
   let q = supabase.from('tracks').select('*').order('sort_order')
   if (!includeInactive) q = q.eq('is_active', true)
   return unwrap(await q)
 }
 
-export async function fetchTrackBySlug(slug: string): Promise<Track | null> {
-  const { data, error } = await supabase
-    .from('tracks')
-    .select('*')
-    .eq('slug', slug)
-    .maybeSingle()
+/**
+ * Hands back song slots held by registrations that were started and abandoned.
+ * Safe for anyone to call — it only removes rows that are already expired by
+ * the strict definition in the database.
+ */
+export async function releaseExpiredHolds(): Promise<number> {
+  const { data, error } = await supabase.rpc('release_expired_holds')
   if (error) throw error
-  return data
+  return (data as number) ?? 0
 }
 
-export async function fetchTrackCategories(): Promise<TrackCategory[]> {
-  return unwrap(await supabase.from('track_categories').select('*'))
-}
-
-export async function fetchSchools(includeInactive = false): Promise<School[]> {
-  let q = supabase.from('schools').select('*').order('name')
-  if (!includeInactive) q = q.eq('is_active', true)
-  return unwrap(await q)
-}
-
-/** Live availability for every song / sloka / character. No personal data. */
+/**
+ * Live availability for the bhajan song list. No personal data.
+ *
+ * Expired holds are released first, so a student is never shown a song as
+ * full when the only thing holding it is somebody who walked away. Failure is
+ * non-fatal: the counts are simply a little stale, and the database still
+ * refuses to oversubscribe on submit.
+ */
 export async function fetchAvailability(trackId?: string): Promise<SelectionAvailability[]> {
+  await releaseExpiredHolds().catch(() => {})
+
   let q = supabase.from('selection_availability').select('*').order('sort_order')
   if (trackId) q = q.eq('track_id', trackId)
   return unwrap(await q)
@@ -77,12 +67,6 @@ export async function fetchGallery(): Promise<GalleryItem[]> {
   )
 }
 
-export async function fetchTestimonials(includeUnpublished = false): Promise<Testimonial[]> {
-  let q = supabase.from('testimonials').select('*').order('sort_order')
-  if (!includeUnpublished) q = q.eq('is_published', true)
-  return unwrap(await q)
-}
-
 export async function fetchPublicStats(): Promise<PublicStats> {
   const { data, error } = await supabase.from('public_stats').select('*').single()
   if (error) throw error
@@ -90,15 +74,18 @@ export async function fetchPublicStats(): Promise<PublicStats> {
 }
 
 const SETTING_FALLBACK: FestivalSettings = {
-  registration: { open: false, max_tracks_per_student: 3, closes_at: null },
+  registration: { open: false, fee: 99, closes_at: null },
   event: {
     edition: '2026',
-    stage1_label: 'School Round',
-    stage1_window: 'At your school',
-    stage2_label: 'Grand Finale',
-    stage2_date: '',
-    venue: 'ISKCON Ulubari, Guwahati',
+    online_date: '',
+    onsite_date: '',
+    venue: 'ISKCON Guwahati, Ulubari',
     city: 'Guwahati, Assam',
+  },
+  payment: {
+    upi_id: '',
+    upi_name: '',
+    methods: { upi_manual: true, pay_at_venue: true, razorpay: false },
   },
   contact: { email: '', phone: '' },
 }
@@ -112,11 +99,20 @@ export async function fetchSettings(): Promise<FestivalSettings> {
     unknown
   >
 
-  // Spreading a missing key is a no-op, so absent settings fall back cleanly.
   return {
-    registration: { ...SETTING_FALLBACK.registration, ...(map.registration as object) },
-    event: { ...SETTING_FALLBACK.event, ...(map.event as object) },
-    contact: { ...SETTING_FALLBACK.contact, ...(map.contact as object) },
+    registration: { ...SETTING_FALLBACK.registration, ...((map.registration as object) ?? {}) },
+    event: { ...SETTING_FALLBACK.event, ...((map.event as object) ?? {}) },
+    payment: {
+      ...SETTING_FALLBACK.payment,
+      ...((map.payment as object) ?? {}),
+      // `methods` is nested, so a shallow spread would drop any key the stored
+      // row happens to omit.
+      methods: {
+        ...SETTING_FALLBACK.payment.methods,
+        ...(((map.payment as { methods?: object } | undefined)?.methods) ?? {}),
+      },
+    },
+    contact: { ...SETTING_FALLBACK.contact, ...((map.contact as object) ?? {}) },
   }
 }
 
@@ -156,16 +152,92 @@ export async function lookupRegistration(
 }
 
 /* =========================================================================
+   Payments — every call here lands on an Edge Function, never on a table.
+   The browser is never trusted with an amount or a payment status.
+   ========================================================================= */
+
+export async function createPaymentOrder(registrationId: string): Promise<CreateOrderResult> {
+  const { data, error } = await supabase.functions.invoke('create-order', {
+    body: { registration_id: registrationId },
+  })
+  if (error) throw error
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error)
+  return data as CreateOrderResult
+}
+
+/**
+ * A student reports the UTR for a UPI payment they just made. This does not
+ * mark them paid — it moves them into the organiser's verification queue.
+ */
+export async function submitUpiReference(
+  registrationId: string,
+  reference: string,
+): Promise<{ status: string; reference?: string; already?: boolean }> {
+  const { data, error } = await supabase.rpc('submit_upi_reference', {
+    p_registration_id: registrationId,
+    p_reference: reference,
+  })
+  if (error) throw error
+  return data as { status: string; reference?: string }
+}
+
+/** Organiser confirms a UPI reference against the bank statement. */
+export async function confirmUpiPayment(id: string, note?: string): Promise<void> {
+  const { data: session } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('registrations')
+    .update({
+      payment_status: 'paid',
+      paid_at: new Date().toISOString(),
+      payment_verified_by: session.user?.id ?? null,
+      payment_verified_at: new Date().toISOString(),
+      payment_notes: note ?? 'UPI reference verified',
+      hold_expires_at: null,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+/** Organiser could not find the reference on the statement. */
+export async function rejectUpiPayment(id: string, note: string): Promise<void> {
+  const { data: session } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('registrations')
+    .update({
+      payment_status: 'pending',
+      upi_reference: null,
+      payment_verified_by: session.user?.id ?? null,
+      payment_verified_at: new Date().toISOString(),
+      payment_notes: note,
+      // Give them a full day to sort it out rather than the usual short hold —
+      // this is our judgement call, not their abandonment, and it should not
+      // quietly delete a registration while someone is on the phone to them.
+      hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function verifyPayment(payload: {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}): Promise<{ ok: boolean; reg_code: string }> {
+  const { data, error } = await supabase.functions.invoke('verify-payment', { body: payload })
+  if (error) throw error
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error)
+  return data as { ok: boolean; reg_code: string }
+}
+
+/* =========================================================================
    Admin
    ========================================================================= */
 
 const REGISTRATION_SELECT = `
   *,
-  category:categories ( id, name, code ),
-  school:schools ( id, name ),
   registration_tracks (
     *,
-    track:tracks ( id, name, slug, accent, icon ),
+    track:tracks ( id, name, slug, accent, icon, mode ),
     selection_item:selection_items ( id, title ),
     team_members ( * )
   )
@@ -198,6 +270,41 @@ export async function updateRegistration(
   if (error) throw error
 }
 
+/** Records a cash payment taken at the temple. */
+export async function markPaidAtVenue(id: string, note?: string): Promise<void> {
+  const { error } = await supabase
+    .from('registrations')
+    .update({
+      payment_status: 'paid',
+      paid_at: new Date().toISOString(),
+      payment_notes: note ?? 'Collected at the venue',
+      hold_expires_at: null,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function setCertificateStatus(
+  ids: string[],
+  status: 'pending' | 'collected' | 'emailed' | 'whatsapp_sent',
+): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await supabase
+    .from('registrations')
+    .update({
+      certificate_status: status,
+      certificate_sent_at: status === 'pending' ? null : new Date().toISOString(),
+    })
+    .in('id', ids)
+  if (error) throw error
+}
+
+export async function setAttendance(ids: string[], attended: boolean): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await supabase.from('registrations').update({ attended }).in('id', ids)
+  if (error) throw error
+}
+
 export async function deleteRegistration(id: string): Promise<void> {
   const { error } = await supabase.from('registrations').delete().eq('id', id)
   if (error) throw error
@@ -207,12 +314,9 @@ export async function updateEntry(
   id: string,
   patch: Partial<{
     outcome: string
-    stage1_score: number | null
-    stage1_rank: number | null
-    stage1_remarks: string | null
-    stage2_score: number | null
-    stage2_rank: number | null
-    stage2_remarks: string | null
+    score: number | null
+    rank: number | null
+    remarks: string | null
     award: string | null
   }>,
 ): Promise<void> {
@@ -220,29 +324,12 @@ export async function updateEntry(
   if (error) throw error
 }
 
-/** Promote or demote a batch of entries in one round trip. */
-export async function setEntryOutcomes(
-  ids: string[],
-  outcome: string,
-): Promise<void> {
+export async function setEntryOutcomes(ids: string[], outcome: string): Promise<void> {
   if (ids.length === 0) return
   const { error } = await supabase
     .from('registration_tracks')
     .update({ outcome })
     .in('id', ids)
-  if (error) throw error
-}
-
-/** Move the students behind these entries into the finals (or back). */
-export async function setRegistrationStage(
-  registrationIds: string[],
-  stage: 'school_round' | 'finals',
-): Promise<void> {
-  if (registrationIds.length === 0) return
-  const { error } = await supabase
-    .from('registrations')
-    .update({ stage })
-    .in('id', registrationIds)
   if (error) throw error
 }
 
@@ -271,16 +358,6 @@ export async function updateTrack(id: string, patch: Partial<Track>): Promise<vo
   if (error) throw error
 }
 
-export async function upsertSchool(school: Partial<School> & { name: string; slug: string }) {
-  const { error } = await supabase.from('schools').upsert(school)
-  if (error) throw error
-}
-
-export async function deleteSchool(id: string): Promise<void> {
-  const { error } = await supabase.from('schools').delete().eq('id', id)
-  if (error) throw error
-}
-
 export async function upsertGalleryItem(
   item: Partial<GalleryItem> & { year: number; image_url: string },
 ): Promise<void> {
@@ -293,42 +370,127 @@ export async function deleteGalleryItem(id: string): Promise<void> {
   if (error) throw error
 }
 
-export async function upsertTestimonial(
-  item: Partial<Testimonial> & { student_name: string; quote: string },
-): Promise<void> {
-  const { error } = await supabase.from('testimonials').upsert(item)
-  if (error) throw error
-}
-
-export async function deleteTestimonial(id: string): Promise<void> {
-  const { error } = await supabase.from('testimonials').delete().eq('id', id)
-  if (error) throw error
-}
-
+/**
+ * Writes a settings row.
+ *
+ * Upsert rather than update on purpose: a plain UPDATE against a key that does
+ * not exist yet matches zero rows and reports no error, so the UI would show
+ * "Saved." while nothing was written. That is exactly what happened when the
+ * `payment` key was introduced on a database seeded before it existed.
+ *
+ * `is_public` is set because every settings key here has to be readable by
+ * students — the row-level security policy on `settings` is
+ * `using (is_public or is_admin())`, so a row saved with the default `false`
+ * would be invisible to the public site.
+ */
 export async function saveSetting(key: string, value: unknown): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('settings')
-    .update({ value, updated_at: new Date().toISOString() })
-    .eq('key', key)
+    .upsert(
+      { key, value, is_public: true, updated_at: new Date().toISOString() },
+      { onConflict: 'key' },
+    )
+    .select('key')
+
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Nothing was saved for "${key}". You may not have permission to change settings — check you are signed in as a super admin.`,
+    )
+  }
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  return unwrap(
-    await supabase.from('admin_users').select('*').order('created_at'),
-  )
+  return unwrap(await supabase.from('admin_users').select('*').order('created_at'))
 }
 
-export async function updateAdminUser(
-  id: string,
-  patch: Partial<AdminUser>,
-): Promise<void> {
+export async function updateAdminUser(id: string, patch: Partial<AdminUser>): Promise<void> {
   const { error } = await supabase.from('admin_users').update(patch).eq('id', id)
   if (error) throw error
 }
 
 export async function recountSlots(): Promise<void> {
   const { error } = await supabase.rpc('recount_selection_slots')
+  if (error) throw error
+}
+
+/* =========================================================================
+   Messaging
+   ========================================================================= */
+
+export interface MessageLogRow {
+  id: number
+  registration_id: string
+  channel: 'email' | 'whatsapp'
+  template: string
+  recipient: string
+  status: 'sent' | 'failed'
+  error: string | null
+  sent_at: string
+}
+
+export async function fetchMessageLog(): Promise<MessageLogRow[]> {
+  return unwrap(
+    await supabase
+      .from('message_log')
+      .select('*')
+      .order('sent_at', { ascending: false })
+      .limit(2000),
+  )
+}
+
+/**
+ * Sends a templated email to up to 60 registrations. The Edge Function does
+ * the rendering and the sending, and writes the message_log rows — the API key
+ * never reaches the browser.
+ */
+export async function sendEmails(payload: {
+  registration_ids: string[]
+  template: string
+  subject: string
+  body: string
+  fields?: Record<string, string>
+}): Promise<{ sent: number; failed: number; results: { id: string; ok: boolean; error?: string }[] }> {
+  const { data, error } = await supabase.functions.invoke('send-email', { body: payload })
+  if (error) throw error
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error)
+  return data as { sent: number; failed: number; results: { id: string; ok: boolean; error?: string }[] }
+}
+
+/**
+ * Records that a WhatsApp message was sent. WhatsApp cannot confirm delivery
+ * to us — a person tapped Send — so this is the organiser's own tick, and it
+ * is what makes a long run resumable.
+ */
+export async function logWhatsAppSent(
+  registrationId: string,
+  template: string,
+  recipient: string,
+): Promise<void> {
+  const { data: session } = await supabase.auth.getUser()
+  const { error } = await supabase.from('message_log').insert({
+    registration_id: registrationId,
+    channel: 'whatsapp',
+    template,
+    recipient,
+    status: 'sent',
+    sent_by: session.user?.id ?? null,
+  })
+  // A duplicate means it was already ticked off. Not worth surfacing.
+  if (error && !/duplicate key/i.test(error.message)) throw error
+}
+
+export async function unlogMessage(
+  registrationId: string,
+  channel: 'email' | 'whatsapp',
+  template: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('message_log')
+    .delete()
+    .eq('registration_id', registrationId)
+    .eq('channel', channel)
+    .eq('template', template)
   if (error) throw error
 }
 

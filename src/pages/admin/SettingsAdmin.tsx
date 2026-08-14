@@ -4,20 +4,26 @@ import { useToast } from '@/context/ToastContext'
 import { logAudit, saveSetting } from '@/lib/queries'
 import { friendlyError } from '@/lib/supabase'
 import { formatLongDate } from '@/lib/utils'
-import type { ContactSettings, EventSettings, RegistrationSettings } from '@/lib/types'
+import type {
+  ContactSettings,
+  EventSettings,
+  PaymentSettings,
+  RegistrationSettings,
+} from '@/lib/types'
 import { AdminHeader } from './AdminLayout'
 import { Button } from '@/components/ui/Button'
-import { Input, Textarea, Toggle } from '@/components/ui/Form'
+import { Input, Toggle } from '@/components/ui/Form'
 import { LoadingBlock } from '@/components/ui/Primitives'
-import { CalendarIcon, MailIcon, SettingsIcon } from '@/components/Icons'
+import { CalendarIcon, MailIcon, QrIcon, SettingsIcon } from '@/components/Icons'
 
 export default function SettingsAdmin() {
-  const { settings, loading, reload } = useFestival()
+  const { settings, loading, reload, onlineTracks, onsiteTracks } = useFestival()
   const toast = useToast()
 
   const [registration, setRegistration] = useState<RegistrationSettings | null>(null)
   const [event, setEvent] = useState<EventSettings | null>(null)
   const [contact, setContact] = useState<ContactSettings | null>(null)
+  const [payment, setPayment] = useState<PaymentSettings | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
 
   useEffect(() => {
@@ -25,9 +31,10 @@ export default function SettingsAdmin() {
     setRegistration(settings.registration)
     setEvent(settings.event)
     setContact(settings.contact)
+    setPayment(settings.payment)
   }, [settings])
 
-  if (loading || !registration || !event || !contact) return <LoadingBlock />
+  if (loading || !registration || !event || !contact || !payment) return <LoadingBlock />
 
   async function save(key: string, value: unknown) {
     setSaving(key)
@@ -58,10 +65,8 @@ export default function SettingsAdmin() {
               <SettingsIcon className="size-5" />
             </span>
             <div>
-              <h2 className="text-lg font-black text-night-950">Registration</h2>
-              <p className="text-[13px] text-night-950/50">
-                Whether students can sign up right now.
-              </p>
+              <h2 className="text-lg font-black text-night-950">Registration &amp; fee</h2>
+              <p className="text-[13px] text-night-950/50">Whether students can sign up right now.</p>
             </div>
           </div>
 
@@ -77,7 +82,7 @@ export default function SettingsAdmin() {
               </p>
               <p className="text-[13px] text-night-950/55">
                 {registration.open
-                  ? 'Students can submit the form. The database rejects submissions when this is off.'
+                  ? 'Students can submit the form. The database refuses submissions when this is off.'
                   : 'The form is hidden and any submission is refused server-side.'}
               </p>
             </div>
@@ -85,18 +90,12 @@ export default function SettingsAdmin() {
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Input
-              label="Maximum competitions per student"
+              label="Registration fee (₹)"
               type="number"
-              min={1}
-              max={8}
-              value={registration.max_tracks_per_student}
-              onChange={(e) =>
-                setRegistration({
-                  ...registration,
-                  max_tracks_per_student: Number(e.target.value),
-                })
-              }
-              hint="Enforced in the form and in the database."
+              min={0}
+              value={registration.fee}
+              onChange={(e) => setRegistration({ ...registration, fee: Number(e.target.value) })}
+              hint="Charged once per student, however many competitions they enter."
             />
             <Input
               label="Registration closes on"
@@ -107,6 +106,11 @@ export default function SettingsAdmin() {
               }
               hint="Shown to students. Does not close it automatically — use the switch."
             />
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-marigold-200 bg-marigold-50 px-4 py-3 text-[13px] leading-relaxed text-marigold-900">
+            Changing the fee only affects new registrations. Anyone who already registered keeps
+            the amount they were quoted.
           </div>
 
           <Button
@@ -125,14 +129,50 @@ export default function SettingsAdmin() {
               <CalendarIcon className="size-5" />
             </span>
             <div>
-              <h2 className="text-lg font-black text-night-950">The event</h2>
+              <h2 className="text-lg font-black text-night-950">The two days</h2>
               <p className="text-[13px] text-night-950/50">
-                Dates and venue shown across the site and in the countdown.
+                Shown across the site and used for the countdown.
               </p>
             </div>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Online day"
+              type="date"
+              value={event.online_date}
+              onChange={(e) => setEvent({ ...event, online_date: e.target.value })}
+              hint={
+                onlineTracks.length > 0
+                  ? onlineTracks.map((t) => t.name).join(', ')
+                  : 'No competitions marked online yet.'
+              }
+            />
+            <Input
+              label="Day at the temple"
+              type="date"
+              value={event.onsite_date}
+              onChange={(e) => setEvent({ ...event, onsite_date: e.target.value })}
+              hint={
+                onsiteTracks.length > 0
+                  ? onsiteTracks.map((t) => t.name).join(', ')
+                  : 'No competitions marked onsite yet.'
+              }
+            />
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-peacock-200 bg-peacock-50 px-4 py-3 text-[13px] leading-relaxed text-peacock-900">
+            These dates are for display. Each competition carries its own date in the database — if
+            you move a day, update the competitions too so the two agree.
+            {event.online_date ? (
+              <>
+                {' '}
+                Countdown currently targets <strong>{formatLongDate(event.online_date)}</strong>.
+              </>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Input
               label="Edition"
               value={event.edition}
@@ -144,50 +184,6 @@ export default function SettingsAdmin() {
               value={event.venue}
               onChange={(e) => setEvent({ ...event, venue: e.target.value })}
             />
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Stage 1 label"
-              value={event.stage1_label}
-              onChange={(e) => setEvent({ ...event, stage1_label: e.target.value })}
-            />
-            <Input
-              label="Stage 1 window"
-              value={event.stage1_window}
-              onChange={(e) => setEvent({ ...event, stage1_window: e.target.value })}
-              placeholder="Mid-August 2026, at your own school"
-            />
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Stage 2 label"
-              value={event.stage2_label}
-              onChange={(e) => setEvent({ ...event, stage2_label: e.target.value })}
-            />
-            <Input
-              label="Grand finale date"
-              type="date"
-              value={event.stage2_date}
-              onChange={(e) => setEvent({ ...event, stage2_date: e.target.value })}
-              hint={
-                event.stage2_date
-                  ? `Countdown targets ${formatLongDate(event.stage2_date)}`
-                  : 'Drives the countdown on the home page.'
-              }
-            />
-          </div>
-
-          <Textarea
-            wrapperClassName="mt-4"
-            label="Note about the date"
-            value={event.stage2_note ?? ''}
-            onChange={(e) => setEvent({ ...event, stage2_note: e.target.value })}
-            placeholder="e.g. On the eve of Sri Krishna Janmashtami"
-          />
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Input
               label="City"
               value={event.city}
@@ -201,13 +197,90 @@ export default function SettingsAdmin() {
             />
           </div>
 
-          <div className="mt-5 rounded-2xl border border-marigold-200 bg-marigold-50 px-4 py-3 text-[13px] leading-relaxed text-marigold-900">
-            Janmashtami moves every year with the lunar calendar. Please check the finale date
-            against this year's panjika before you publish it.
-          </div>
-
           <Button className="mt-5" loading={saving === 'event'} onClick={() => save('event', event)}>
             Save event settings
+          </Button>
+        </section>
+
+        {/* payment */}
+        <section className="rounded-3xl border border-night-950/8 bg-white p-6 stack-shadow">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white">
+              <QrIcon className="size-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-black text-night-950">How students pay</h2>
+              <p className="text-[13px] text-night-950/50">
+                Switch methods on and off without a redeploy.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <MethodRow
+              on={payment.methods.upi_manual}
+              onChange={(v) =>
+                setPayment({ ...payment, methods: { ...payment.methods, upi_manual: v } })
+              }
+              title="UPI"
+              body="Student pays to your UPI ID, then reports the reference number. You confirm it against the bank statement in Verify payments. No gateway, no fees."
+            />
+            <MethodRow
+              on={payment.methods.pay_at_venue}
+              onChange={(v) =>
+                setPayment({ ...payment, methods: { ...payment.methods, pay_at_venue: v } })
+              }
+              title="Cash at the temple"
+              body="Only offered to students who entered at least one competition held at the temple. Collect it on the day from the day sheet."
+            />
+            <MethodRow
+              on={payment.methods.razorpay}
+              onChange={(v) =>
+                setPayment({ ...payment, methods: { ...payment.methods, razorpay: v } })
+              }
+              title="Card & net banking (Razorpay)"
+              body="Only switch this on once your Razorpay keys are deployed — see supabase/PAYMENTS.md. Students will see a broken checkout otherwise."
+            />
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <Input
+              label="UPI ID"
+              value={payment.upi_id}
+              onChange={(e) => setPayment({ ...payment, upi_id: e.target.value.trim() })}
+              placeholder="iyfguwahati@sbi"
+              hint="Money goes straight here. Check it character by character."
+            />
+            <Input
+              label="Payee name"
+              value={payment.upi_name}
+              onChange={(e) => setPayment({ ...payment, upi_name: e.target.value })}
+              placeholder="ISKCON Guwahati"
+              hint="What the student sees in their UPI app."
+            />
+          </div>
+
+          {payment.methods.upi_manual && !payment.upi_id.trim() ? (
+            <p className="mt-4 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-800">
+              UPI is switched on but no UPI ID is set — students will be told to contact you
+              instead of being shown a QR code.
+            </p>
+          ) : null}
+
+          {!payment.methods.upi_manual &&
+          !payment.methods.pay_at_venue &&
+          !payment.methods.razorpay ? (
+            <p className="mt-4 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-800">
+              Every payment method is switched off. Nobody can complete a registration.
+            </p>
+          ) : null}
+
+          <Button
+            className="mt-5"
+            loading={saving === 'payment'}
+            onClick={() => save('payment', payment)}
+          >
+            Save payment settings
           </Button>
         </section>
 
@@ -261,5 +334,29 @@ export default function SettingsAdmin() {
         </section>
       </div>
     </>
+  )
+}
+
+function MethodRow({
+  on,
+  onChange,
+  title,
+  body,
+}: {
+  on: boolean
+  onChange: (next: boolean) => void
+  title: string
+  body: string
+}) {
+  return (
+    <div className="flex items-start gap-4 rounded-2xl border-2 border-night-950/8 p-4">
+      <div className="pt-0.5">
+        <Toggle checked={on} onChange={onChange} label={title} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-night-950">{title}</p>
+        <p className="mt-0.5 text-[13px] leading-relaxed text-night-950/60">{body}</p>
+      </div>
+    </div>
   )
 }

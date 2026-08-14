@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ContactSettings, EventSettings } from '@/lib/types'
+import { Brand } from '@/components/Brand'
 import {
   InstagramIcon,
   MailIcon,
@@ -7,7 +8,7 @@ import {
   PhoneIcon,
   WhatsAppIcon,
 } from '@/components/Icons'
-import { MarigoldGarland, PeacockFeather, StarField } from '@/components/Decor'
+import { MarigoldGarland } from '@/components/Decor'
 
 export function SiteFooter({
   event,
@@ -19,25 +20,15 @@ export function SiteFooter({
   const year = new Date().getFullYear()
 
   return (
-    <footer className="relative isolate mt-24 overflow-hidden bg-night text-cream-100">
-      <StarField count={40} className="opacity-45" />
-      <MarigoldGarland className="absolute inset-x-0 -top-3 opacity-90" />
+    <footer className="relative mt-20 bg-night text-cream-100">
+      <MarigoldGarland className="absolute inset-x-0 top-0" />
 
-      <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-20 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.1fr]">
+      <div className="mx-auto max-w-7xl px-4 pb-10 pt-16 sm:px-6 lg:px-8">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="flex items-center gap-3">
-              <PeacockFeather className="h-12 w-auto" />
-              <div>
-                <p className="font-display text-2xl font-black text-cream-50">Utkarsh</p>
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-marigold-300">
-                  Heritage Festival {event.edition}
-                </p>
-              </div>
-            </div>
-            <p className="mt-5 max-w-sm text-sm leading-relaxed text-cream-100/65">
-              A celebration of art, music, drama and scripture for the students of Guwahati —
-              held every year on the eve of Sri Krishna Janmashtami.
+            <Brand size="lg" tone="light" />
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-cream-100/65">
+              A festival of art, music, drama and scripture for the students of Guwahati.
             </p>
           </div>
 
@@ -47,16 +38,13 @@ export function SiteFooter({
             </h3>
             <ul className="mt-4 space-y-2.5 text-sm">
               {[
-                { to: '/tracks', label: 'Competitions' },
-                { to: '/about', label: 'About Utkarsh' },
+                { to: '/competitions', label: 'Competitions' },
                 { to: '/gallery', label: 'Gallery' },
                 { to: '/faq', label: 'FAQ' },
+                { to: '/contact', label: 'Contact' },
               ].map((l) => (
                 <li key={l.to}>
-                  <Link
-                    to={l.to}
-                    className="text-cream-100/70 transition hover:text-marigold-300"
-                  >
+                  <Link to={l.to} className="text-cream-100/70 transition hover:text-marigold-300">
                     {l.label}
                   </Link>
                 </li>
@@ -77,11 +65,6 @@ export function SiteFooter({
               <li>
                 <Link to="/status" className="text-cream-100/70 transition hover:text-marigold-300">
                   Check status
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className="text-cream-100/70 transition hover:text-marigold-300">
-                  Bring Utkarsh to my school
                 </Link>
               </li>
               <li>
@@ -156,11 +139,9 @@ export function SiteFooter({
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col items-center gap-3 border-t border-white/10 pt-7 text-center text-xs text-cream-100/45 sm:flex-row sm:justify-between sm:text-left">
-          <p>© {year} Utkarsh Heritage Festival · ISKCON Ulubari, Guwahati</p>
-          <p className="font-festive text-sm text-marigold-300/70">
-            हरे कृष्ण
-          </p>
+        <div className="mt-12 flex flex-col items-center gap-3 border-t border-white/10 pt-7 text-center text-xs text-cream-100/45 sm:flex-row sm:justify-between sm:text-left">
+          <p>© {year} Utkarsh Heritage Festival · {event.venue}</p>
+          <p className="text-sm text-marigold-300/70">हरे कृष्ण</p>
         </div>
       </div>
     </footer>

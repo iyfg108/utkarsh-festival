@@ -1,36 +1,39 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
 import { useAuth } from '@/context/AuthContext'
 import { cn, initials } from '@/lib/utils'
+import { Brand } from '@/components/Brand'
+import { useAdminActivity } from '@/hooks/useAdminActivity'
+import { NotificationBell } from './NotificationBell'
 import {
   ChartIcon,
   ClipboardIcon,
   CloseIcon,
   ImageIcon,
+  MailIcon,
   MenuIcon,
   MusicIcon,
-  SchoolIcon,
+  QrIcon,
   SettingsIcon,
   TrophyIcon,
   UsersIcon,
 } from '@/components/Icons'
-import { PeacockFeather } from '@/components/Decor'
 
 const NAV = [
   { to: '/admin', label: 'Dashboard', icon: ChartIcon, end: true },
   { to: '/admin/registrations', label: 'Registrations', icon: ClipboardIcon },
-  { to: '/admin/shortlist', label: 'Judging & shortlist', icon: TrophyIcon },
-  { to: '/admin/selections', label: 'Songs & slokas', icon: MusicIcon, superOnly: true },
-  { to: '/admin/schools', label: 'Schools', icon: SchoolIcon, superOnly: true },
-  { to: '/admin/content', label: 'Gallery & quotes', icon: ImageIcon, superOnly: true },
+  { to: '/admin/verify', label: 'Verify payments', icon: QrIcon },
+  { to: '/admin/messages', label: 'Messages', icon: MailIcon },
+  { to: '/admin/day-sheet', label: 'Day sheet', icon: ClipboardIcon },
+  { to: '/admin/judging', label: 'Judging & prizes', icon: TrophyIcon },
+  { to: '/admin/songs', label: 'Bhajan songs', icon: MusicIcon, superOnly: true },
+  { to: '/admin/gallery', label: 'Gallery', icon: ImageIcon, superOnly: true },
   { to: '/admin/users', label: 'Organisers', icon: UsersIcon, superOnly: true },
   { to: '/admin/settings', label: 'Settings', icon: SettingsIcon, superOnly: true },
 ]
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: 'Super admin',
-  school_coordinator: 'School coordinator',
   judge: 'Judge',
 }
 
@@ -38,6 +41,9 @@ export function AdminLayout() {
   const { admin, signOut, isSuperAdmin } = useAuth()
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
+  // Polled once here and shared with the bell, so there is only one request
+  // on the interval however many places show a count.
+  const activity = useAdminActivity()
 
   useEffect(() => setOpen(false), [pathname])
 
@@ -45,16 +51,8 @@ export function AdminLayout() {
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <Link to="/admin" className="flex items-center gap-2.5 px-5 py-6">
-        <span className="grid size-10 place-items-center rounded-2xl bg-night-950">
-          <PeacockFeather className="h-8 w-auto" />
-        </span>
-        <span className="flex flex-col leading-none">
-          <span className="font-display text-lg font-black text-night-950">Utkarsh</span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-marigold-600">
-            Organisers
-          </span>
-        </span>
+      <Link to="/admin" className="px-5 py-6">
+        <Brand size="md" />
       </Link>
 
       <nav className="flex-1 space-y-1 px-3">
@@ -67,15 +65,27 @@ export function AdminLayout() {
               end={n.end}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition',
+                  'group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition',
                   isActive
-                    ? 'bg-marigold-500 text-white shadow-glow-marigold'
+                    ? 'is-active bg-marigold-500 text-white'
                     : 'text-night-950/65 hover:bg-night-950/5 hover:text-night-950',
                 )
               }
             >
               <Icon className="size-5 shrink-0" />
-              {n.label}
+              <span className="flex-1">{n.label}</span>
+              {n.to === '/admin/verify' && activity.needsVerification > 0 ? (
+                <span
+                  className={cn(
+                    'grid min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-black',
+                    // The badge sits on a solid marigold row when active, so
+                    // it needs to invert to stay readable.
+                    'bg-peacock-500 text-white group-[.is-active]:bg-white group-[.is-active]:text-marigold-700',
+                  )}
+                >
+                  {activity.needsVerification}
+                </span>
+              ) : null}
             </NavLink>
           )
         })}
@@ -117,13 +127,11 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-dvh bg-cream-100/60">
-      {/* desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-night-950/8 bg-white lg:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-night-950/8 bg-white lg:block no-print">
         {sidebar}
       </aside>
 
-      {/* mobile bar */}
-      <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-night-950/8 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-night-950/8 bg-white/90 px-4 py-3 backdrop-blur lg:hidden no-print">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -132,41 +140,34 @@ export function AdminLayout() {
         >
           <MenuIcon className="size-5" />
         </button>
-        <span className="font-display text-lg font-black text-night-950">Utkarsh Organisers</span>
+        <Brand size="sm" />
+        <div className="ml-auto">
+          <NotificationBell activity={activity} />
+        </div>
       </div>
 
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 lg:hidden"
-          >
-            <div className="absolute inset-0 bg-night-950/50" onClick={() => setOpen(false)} />
-            <motion.aside
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-              className="absolute inset-y-0 left-0 w-72 bg-white"
+      {open ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-night-950/50" onClick={() => setOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-72 bg-white">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close menu"
+              className="absolute right-3 top-5 grid size-9 place-items-center rounded-xl text-night-950/50 hover:bg-night-950/6"
             >
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close menu"
-                className="absolute right-3 top-5 grid size-9 place-items-center rounded-xl text-night-950/50 hover:bg-night-950/6"
-              >
-                <CloseIcon className="size-5" />
-              </button>
-              {sidebar}
-            </motion.aside>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+              <CloseIcon className="size-5" />
+            </button>
+            {sidebar}
+          </aside>
+        </div>
+      ) : null}
 
       <main className="lg:pl-64">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl justify-end px-4 pt-5 sm:px-6 lg:px-8 no-print">
+          <NotificationBell activity={activity} />
+        </div>
+        <div className="mx-auto max-w-7xl px-4 pb-8 pt-3 sm:px-6 lg:px-8">
           <Outlet />
         </div>
       </main>
@@ -185,9 +186,9 @@ export function AdminHeader({
   actions?: React.ReactNode
 }) {
   return (
-    <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
+    <header className="mb-6 flex flex-wrap items-end justify-between gap-4 no-print">
       <div>
-        <h1 className="font-display text-3xl font-black text-night-950">{title}</h1>
+        <h1 className="font-display text-2xl font-black text-night-950 sm:text-3xl">{title}</h1>
         {subtitle ? <p className="mt-1 text-sm text-night-950/55">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}

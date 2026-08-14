@@ -2,8 +2,18 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAsync } from '@/hooks/useAsync'
 import { useFestival } from '@/context/FestivalContext'
+import {
+  CERTIFICATE_LABEL,
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_STATUS_LABEL,
+  accent,
+  cn,
+  downloadCsv,
+  formatDate,
+  formatMoney,
+  toCsv,
+} from '@/lib/utils'
 import { fetchRegistrations } from '@/lib/queries'
-import { accent, cn, downloadCsv, formatDate, toCsv } from '@/lib/utils'
 import type { RegistrationRow } from '@/lib/types'
 import { AdminHeader } from './AdminLayout'
 import { Button } from '@/components/ui/Button'
@@ -16,17 +26,14 @@ import {
 } from '@/components/ui/Primitives'
 import { ClipboardIcon, DownloadIcon, SearchIcon, TrackIcon } from '@/components/Icons'
 
-const STAGE_LABEL = { school_round: 'School round', finals: 'Finals' } as const
-
 export default function Registrations() {
   const { data, loading, error, reload } = useAsync(() => fetchRegistrations(), [])
-  const { tracks, categories, schools } = useFestival()
+  const { tracks } = useFestival()
 
   const [q, setQ] = useState('')
   const [trackId, setTrackId] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [schoolId, setSchoolId] = useState('')
-  const [stage, setStage] = useState('')
+  const [payment, setPayment] = useState('')
+  const [certificate, setCertificate] = useState('')
 
   const rows = data ?? []
 
@@ -34,58 +41,83 @@ export default function Registrations() {
     const needle = q.trim().toLowerCase()
     return rows.filter((r) => {
       if (needle) {
-        const haystack = [
+        const hay = [
           r.full_name,
           r.reg_code,
           r.guardian_name,
           r.guardian_phone,
           r.email ?? '',
-          r.school?.name ?? r.school_name_other ?? '',
+          r.whatsapp ?? '',
+          r.school_name,
           ...r.registration_tracks.map((e) => e.selection_item?.title ?? ''),
         ]
           .join(' ')
           .toLowerCase()
-        if (!haystack.includes(needle)) return false
+        if (!hay.includes(needle)) return false
       }
       if (trackId && !r.registration_tracks.some((e) => e.track_id === trackId)) return false
-      if (categoryId && r.category_id !== categoryId) return false
-      if (schoolId && r.school_id !== schoolId) return false
-      if (stage && r.stage !== stage) return false
+      if (payment === 'due' && r.payment_status === 'paid') return false
+      if (payment === 'paid' && r.payment_status !== 'paid') return false
+      if (payment === 'at_venue' && r.payment_method !== 'pay_at_venue') return false
+      if (payment === 'awaiting' && r.payment_status !== 'awaiting_verification') return false
+      if (certificate === 'pending' && r.certificate_status !== 'pending') return false
+      if (certificate === 'done' && r.certificate_status === 'pending') return false
       return true
     })
-  }, [rows, q, trackId, categoryId, schoolId, stage])
+  }, [rows, q, trackId, payment, certificate])
 
+  /**
+   * One row per student, with a column per competition. This is the sheet the
+   * organisers actually work from on the day, so it opens straight into Excel
+   * with everything needed to verify a payment and hand over a certificate.
+   */
   function exportCsv() {
-    // One row per entry — that is what organisers actually work from.
-    const flat = filtered.flatMap((r) =>
-      r.registration_tracks.map((e) => ({
-        registration_code: r.reg_code,
-        student_name: r.full_name,
-        class: r.class_level,
-        section: r.section ?? '',
-        age_group: r.category?.name ?? '',
-        school: r.school?.name ?? r.school_name_other ?? '',
-        guardian_name: r.guardian_name,
-        guardian_phone: r.guardian_phone,
-        student_phone: r.student_phone ?? '',
-        email: r.email ?? '',
-        competition: e.track?.name ?? '',
-        selection: e.selection_item?.title ?? '',
-        team_name: e.team_name ?? '',
-        team_size: e.team_members ? e.team_members.length + 1 : '',
-        stage: STAGE_LABEL[r.stage],
-        outcome: e.outcome,
-        stage1_score: e.stage1_score ?? '',
-        stage2_score: e.stage2_score ?? '',
-        award: e.award ?? '',
-        registered_on: formatDate(r.created_at),
-      })),
-    )
+    const flat = filtered.map((r) => {
+      const base: Record<string, unknown> = {
+        'Registration code': r.reg_code,
+        Name: r.full_name,
+        Class: r.class_level,
+        School: r.school_name,
+        'Date of birth': formatDate(r.date_of_birth),
+        Gender: r.gender,
+        Guardian: r.guardian_name,
+        'Guardian phone': r.guardian_phone,
+        'Student phone': r.student_phone ?? '',
+        Email: r.email ?? '',
+        WhatsApp: r.whatsapp ?? '',
+      }
+
+      // A yes/no column per competition keeps the printed sheet readable.
+      for (const t of tracks) {
+        const entry = r.registration_tracks.find((e) => e.track_id === t.id)
+        base[t.name] = entry ? (entry.selection_item?.title ?? 'Yes') : ''
+      }
+
+      base['Fee'] = r.fee_amount
+      base['Payment method'] = r.payment_method ? PAYMENT_METHOD_LABEL[r.payment_method] : ''
+      base['Paid'] = r.payment_status === 'paid' ? 'YES' : 'NO'
+      base['Paid on'] = r.paid_at ? formatDate(r.paid_at, true) : ''
+      base['Payment ref'] = r.razorpay_payment_id ?? r.upi_reference ?? ''
+      base['Payment status'] = PAYMENT_STATUS_LABEL[r.payment_status]
+      base['Payment note'] = r.payment_notes ?? ''
+      base['Attended'] = r.attended ? 'YES' : 'NO'
+      base['Certificate'] = CERTIFICATE_LABEL[r.certificate_status]
+      base['Prizes'] = r.registration_tracks
+        .filter((e) => e.award)
+        .map((e) => `${e.track?.name}: ${e.award}`)
+        .join('; ')
+      base['Registered on'] = formatDate(r.created_at)
+
+      return base
+    })
+
     downloadCsv(
       `utkarsh-registrations-${new Date().toISOString().slice(0, 10)}.csv`,
       toCsv(flat),
     )
   }
+
+  const dueCount = filtered.filter((r) => r.payment_status !== 'paid').length
 
   if (loading && rows.length === 0) return <LoadingBlock label="Loading registrations…" />
   if (error) return <ErrorState error={error} onRetry={reload} />
@@ -94,7 +126,7 @@ export default function Registrations() {
     <>
       <AdminHeader
         title="Registrations"
-        subtitle={`${filtered.length} of ${rows.length} shown`}
+        subtitle={`${filtered.length} of ${rows.length} shown · ${dueCount} with the fee still due`}
         actions={
           <Button
             variant="outline"
@@ -102,12 +134,11 @@ export default function Registrations() {
             disabled={filtered.length === 0}
             icon={<DownloadIcon className="size-4" />}
           >
-            Export CSV
+            Export for Excel
           </Button>
         }
       />
 
-      {/* filters */}
       <div className="mb-5 rounded-3xl border border-night-950/8 bg-white p-4 stack-shadow">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-night-950/35" />
@@ -119,7 +150,7 @@ export default function Registrations() {
           />
         </div>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <Select value={trackId} onChange={(e) => setTrackId(e.target.value)}>
             <option value="">All competitions</option>
             {tracks.map((t) => (
@@ -128,26 +159,17 @@ export default function Registrations() {
               </option>
             ))}
           </Select>
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">All age groups</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+          <Select value={payment} onChange={(e) => setPayment(e.target.value)}>
+            <option value="">Any payment status</option>
+            <option value="due">Fee still due</option>
+            <option value="paid">Paid</option>
+            <option value="awaiting">UPI — waiting to be checked</option>
+            <option value="at_venue">Paying at the venue</option>
           </Select>
-          <Select value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
-            <option value="">All schools</option>
-            {schools.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
-          <Select value={stage} onChange={(e) => setStage(e.target.value)}>
-            <option value="">Any stage</option>
-            <option value="school_round">School round</option>
-            <option value="finals">Finals</option>
+          <Select value={certificate} onChange={(e) => setCertificate(e.target.value)}>
+            <option value="">Any certificate status</option>
+            <option value="pending">Certificate not issued</option>
+            <option value="done">Certificate issued</option>
           </Select>
         </div>
       </div>
@@ -165,15 +187,15 @@ export default function Registrations() {
       ) : (
         <div className="overflow-hidden rounded-3xl border border-night-950/8 bg-white stack-shadow">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[54rem] text-left text-sm">
+            <table className="w-full min-w-[56rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-night-950/8 bg-cream-50/70 text-[11px] font-bold uppercase tracking-wider text-night-950/50">
                   <th className="px-5 py-3.5">Student</th>
                   <th className="px-4 py-3.5">Code</th>
                   <th className="px-4 py-3.5">School</th>
-                  <th className="px-4 py-3.5">Group</th>
                   <th className="px-4 py-3.5">Competitions</th>
-                  <th className="px-4 py-3.5">Stage</th>
+                  <th className="px-4 py-3.5">Fee</th>
+                  <th className="px-4 py-3.5">Certificate</th>
                   <th className="px-4 py-3.5">Registered</th>
                 </tr>
               </thead>
@@ -191,6 +213,7 @@ export default function Registrations() {
 }
 
 function Row({ r }: { r: RegistrationRow }) {
+  const paid = r.payment_status === 'paid'
   return (
     <tr className="transition hover:bg-cream-50/60">
       <td className="px-5 py-3.5">
@@ -201,19 +224,13 @@ function Row({ r }: { r: RegistrationRow }) {
           {r.full_name}
         </Link>
         <p className="text-[12px] text-night-950/45">
-          Class {r.class_level}
-          {r.section ? ` · ${r.section}` : ''} · {r.guardian_phone}
+          Class {r.class_level} · {r.guardian_phone}
         </p>
       </td>
       <td className="px-4 py-3.5">
         <span className="font-mono text-[12px] font-bold text-night-950/70">{r.reg_code}</span>
       </td>
-      <td className="max-w-[13rem] truncate px-4 py-3.5 text-night-950/70">
-        {r.school?.name ?? r.school_name_other}
-      </td>
-      <td className="px-4 py-3.5">
-        <Badge tone="neutral">{r.category?.name ?? '—'}</Badge>
-      </td>
+      <td className="max-w-[12rem] truncate px-4 py-3.5 text-night-950/70">{r.school_name}</td>
       <td className="px-4 py-3.5">
         <div className="flex flex-wrap gap-1">
           {r.registration_tracks.map((e) => {
@@ -235,11 +252,28 @@ function Row({ r }: { r: RegistrationRow }) {
         </div>
       </td>
       <td className="px-4 py-3.5">
-        {r.stage === 'finals' ? (
-          <Badge tone="gold">Finals</Badge>
+        {paid ? (
+          <Badge tone="success">{formatMoney(r.fee_amount)} paid</Badge>
+        ) : r.payment_status === 'awaiting_verification' ? (
+          <div className="flex flex-col gap-0.5">
+            <Badge tone="info">Checking</Badge>
+            <span className="font-mono text-[10px] text-night-950/45">{r.upi_reference}</span>
+          </div>
         ) : (
-          <Badge tone="neutral">School</Badge>
+          <div className="flex flex-col gap-0.5">
+            <Badge tone="danger">{formatMoney(r.fee_amount)} due</Badge>
+            {r.payment_method ? (
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-night-950/40">
+                {PAYMENT_METHOD_LABEL[r.payment_method]}
+              </span>
+            ) : null}
+          </div>
         )}
+      </td>
+      <td className="px-4 py-3.5">
+        <Badge tone={r.certificate_status === 'pending' ? 'neutral' : 'success'}>
+          {CERTIFICATE_LABEL[r.certificate_status]}
+        </Badge>
       </td>
       <td className="whitespace-nowrap px-4 py-3.5 text-[12px] text-night-950/45">
         {formatDate(r.created_at)}
