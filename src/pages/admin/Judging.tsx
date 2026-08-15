@@ -30,6 +30,7 @@ interface Line {
   regCode: string
   classLevel: number
   school: string
+  group: string
   selection: string | null
   score: number | null
   outcome: EntryOutcome
@@ -45,7 +46,7 @@ export default function Judging() {
   const { data, loading, error, reload } = useAsync(() => fetchRegistrations(), [])
 
   const [trackId, setTrackId] = useState('')
-  const [classBand, setClassBand] = useState('')
+  const [group, setGroup] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
 
@@ -58,10 +59,8 @@ export default function Judging() {
   const lines = useMemo<Line[]>(() => {
     const out: Line[] = []
     for (const r of rows as RegistrationRow[]) {
-      if (classBand) {
-        const [lo, hi] = classBand.split('-').map(Number)
-        if (r.class_level < lo || r.class_level > hi) continue
-      }
+      // Groups are how the poster advertises it and how prizes are given.
+      if (group && r.class_group !== group) continue
       for (const e of r.registration_tracks) {
         if (trackId && e.track_id !== trackId) continue
         out.push({
@@ -71,6 +70,7 @@ export default function Judging() {
           regCode: r.reg_code,
           classLevel: r.class_level,
           school: r.school_name,
+          group: r.class_group,
           selection: e.selection_item?.title ?? null,
           score: e.score,
           outcome: e.outcome,
@@ -85,7 +85,7 @@ export default function Judging() {
       if (b.score === null) return -1
       return b.score - a.score
     })
-  }, [rows, trackId, classBand])
+  }, [rows, trackId, group])
 
   const track = tracks.find((t) => t.id === trackId)
   const scored = lines.filter((l) => l.score !== null).length
@@ -153,6 +153,7 @@ export default function Judging() {
           student: l.student,
           code: l.regCode,
           class: l.classLevel,
+          group: l.group,
           school: l.school,
           selection: l.selection ?? '',
           score: l.score ?? '',
@@ -192,15 +193,15 @@ export default function Judging() {
           ))}
         </Select>
         <Select
-          label="Class range"
-          value={classBand}
-          onChange={(e) => setClassBand(e.target.value)}
-          hint="Optional — useful if you judge younger and older students separately."
+          label="Group"
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+          hint="Prizes are given per group, as advertised on the poster."
         >
-          <option value="">All classes (1–10)</option>
-          <option value="1-3">Class 1–3</option>
-          <option value="4-6">Class 4–6</option>
-          <option value="7-10">Class 7–10</option>
+          <option value="">All groups</option>
+          <option value="A">A · Class I–IV</option>
+          <option value="B">B · Class V–VII</option>
+          <option value="C">C · Class VIII–X</option>
         </Select>
       </div>
 
@@ -331,7 +332,7 @@ export default function Judging() {
                           {l.student}
                         </Link>
                         <p className="flex items-center gap-1.5 text-[12px] text-night-950/45">
-                          Class {l.classLevel} · {l.regCode}
+                          Class {l.classLevel} · Group {l.group} · {l.regCode}
                           {!l.paid ? (
                             <span className="rounded bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700">
                               FEE DUE

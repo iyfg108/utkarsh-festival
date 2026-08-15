@@ -10,9 +10,9 @@
 
 -- ---------------------------------------------------------------------------
 -- The five competitions
---   23 August — online:  Vedic Quiz
---   30 August — onsite:  Vedic Art, Vedic Fancy Dress, Devotional Bhajan,
---                        Gita Shloka Uchcharan  (ISKCON Ulubari, Guwahati)
+--   23 August — online:  Vedic Quiz, Gita Shloka Uchcharan
+--   30 August — onsite:  Vedic Art, Vedic Fancy Dress, Devotional Bhajan
+--                        (ISKCON Ulubari, Guwahati)
 -- ---------------------------------------------------------------------------
 insert into tracks (
   slug, name, sanskrit_name, tagline, description, icon, accent,
@@ -90,14 +90,15 @@ insert into tracks (
     'Recite verses from the Bhagavad-gita from memory. Judged on pronunciation, rhythm, memory and the feeling you bring to the verse.',
     'scroll', 'gold',
     array[
-      'Held at ISKCON Ulubari on 30 August.',
+      'Held online on 23 August, 4 pm to 6 pm.',
       'Recite from memory — no reading from a book or phone.',
+      'The joining link is sent to your email or WhatsApp a day before.',
       'Class 1–5: any two verses. Class 6–10: any four verses.',
       'Sanskrit pronunciation carries the most weight in scoring.',
       'You may be asked the meaning of a verse in one or two lines.'
     ],
     array['Nothing — just your memory and your voice'],
-    4, 'onsite', '2026-08-30',
+    4, 'online', '2026-08-23',
     1, 10, false, 1, 1, false, null, null, 5
   )
 on conflict (slug) do update

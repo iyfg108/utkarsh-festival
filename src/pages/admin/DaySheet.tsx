@@ -101,11 +101,12 @@ export default function DaySheet() {
   }
 
   function exportSheet() {
-    const header = ['Name', 'Code', 'Class', 'School', 'Phone', 'Competitions', 'Fee', 'Paid', 'Certificate']
+    const header = ['Name', 'Code', 'Class', 'Group', 'School', 'Phone', 'Competitions', 'Fee', 'Paid', 'Certificate']
     const lines = filtered.map((r) => [
       r.full_name,
       r.reg_code,
       r.class_level,
+      r.class_group,
       r.school_name,
       r.guardian_phone,
       r.registration_tracks.map((e) => e.track?.name).join(' / '),

@@ -126,7 +126,43 @@ update tracks set sort_order = 4 where slug = 'devotional-bhajan';
 update tracks set sort_order = 5 where slug = 'gita-shloka';
 
 -- ---------------------------------------------------------------------------
--- 7. Sanity check — what the site will show
+-- 7. Gita Shloka Uchcharan runs ONLINE on 23 August, not at the temple on the
+--    30th. The printed poster is the published truth here and it is already
+--    out with the QR code on it, so the database follows the poster.
+--
+--    Knock-on: a student entering only Quiz and Shloka is now online-only, so
+--    the "pay cash at the temple" option correctly disappears for them.
+-- ---------------------------------------------------------------------------
+update tracks
+   set mode = 'online',
+       event_date = '2026-08-23',
+       rules = array[
+         'Held online on 23 August, 4 pm to 6 pm.',
+         'Recite from memory — no reading from a book or phone.',
+         'The joining link is sent to your email or WhatsApp a day before.',
+         'Class 1–5: any two verses. Class 6–10: any four verses.',
+         'Sanskrit pronunciation carries the most weight in scoring.',
+         'You may be asked the meaning of a verse in one or two lines.'
+       ]
+ where slug = 'gita-shloka';
+
+-- ---------------------------------------------------------------------------
+-- 8. Class groups, as advertised on the poster. Generated from class_level, so
+--    it cannot drift. A = I–IV, B = V–VII, C = VIII–X.
+-- ---------------------------------------------------------------------------
+do $$ begin
+  alter table registrations add column class_group text
+    generated always as (
+      case when class_level <= 4 then 'A'
+           when class_level <= 7 then 'B'
+           else 'C' end
+    ) stored;
+exception when duplicate_column then null; end $$;
+
+create index if not exists registrations_group_idx on registrations (class_group);
+
+-- ---------------------------------------------------------------------------
+-- 9. Sanity check — what the site will show
 -- ---------------------------------------------------------------------------
 select value->>'upi_id' as upi_id_students_will_pay_to,
        value->'methods' as enabled_methods

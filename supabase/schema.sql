@@ -198,6 +198,21 @@ alter table registrations add column if not exists payment_verified_by uuid refe
 alter table registrations add column if not exists payment_verified_at timestamptz;
 alter table registrations add column if not exists hold_expires_at     timestamptz;
 
+-- The poster advertises three class groups, and judging is done within them.
+-- Generated rather than stored by hand: it is purely a function of the class,
+-- so it can never drift out of step with it.
+--   A = Class I-IV, B = Class V-VII, C = Class VIII-X
+do $$ begin
+  alter table registrations add column class_group text
+    generated always as (
+      case when class_level <= 4 then 'A'
+           when class_level <= 7 then 'B'
+           else 'C' end
+    ) stored;
+exception when duplicate_column then null; end $$;
+
+create index if not exists registrations_group_idx on registrations (class_group);
+
 create unique index if not exists registrations_dedupe_idx
   on registrations (lower(btrim(full_name)), guardian_phone);
 

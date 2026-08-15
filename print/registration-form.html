@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Utkarsh 2026 — Registration Form (2 per A4)</title>
+<style>
+/* ===========================================================================
+   Utkarsh 2026 — physical registration form.
+   Two A5 forms on one A4 landscape sheet; cut down the centre.
+
+   Open in Chrome or Safari and print:
+       Paper  A4        Orientation Landscape
+       Scale  100%      Margins None / Default
+       Tick "Background graphics" — the coloured bars are printed elements.
+
+   Built as HTML rather than an image so the text stays vector-sharp at any
+   size, and so a field can be reworded without redrawing anything.
+
+   Colours are lifted from the poster, but used sparingly: heavy ink over a
+   writing area makes a form hard to fill in and worse to photocopy. Structure
+   is carried by borders and weight as well as colour, so a black-and-white
+   copy still reads correctly.
+   =========================================================================== */
+
+@page { size: A4 landscape; margin: 0; }
+
+:root {
+  --navy:   #1b3a9c;
+  --pink:   #e5187f;
+  --purple: #6b21a8;
+  --yellow: #ffd100;
+  --cyan:   #22b3d4;
+  --ink:    #14204a;
+  --rule:   #9aa3c4;
+  --faint:  #eef1fa;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 297mm;
+  background: #fff;
+  color: var(--ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sheet {
+  width: 297mm;
+  height: 210mm;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* the cut guide, dead centre */
+.sheet::after {
+  content: "";
+  position: absolute;
+  left: 148.5mm; top: 0; bottom: 0;
+  border-left: 0.3mm dashed #b9c0d8;
+}
+
+.form {
+  width: 148.5mm;
+  height: 210mm;
+  padding: 4mm 4.5mm;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85mm;
+}
+
+/* Flex items shrink by default. Under the fixed 210mm page height that let the
+   header squash, and `overflow:hidden` on it then clipped the GROUPS bar clean
+   off in print — visible on paper but not always on screen. Nothing here may
+   shrink; the layout is sized to fit with room to spare instead. */
+.form > * { flex-shrink: 0; }
+
+/* ---------------------------------------------------------------- header */
+.head {
+  border: 0.4mm solid var(--navy);
+  border-radius: 2mm;
+  overflow: hidden;
+}
+
+.head-top {
+  background: var(--navy);
+  color: #fff;
+  padding: 1.2mm 2.5mm;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2mm;
+}
+
+.wordmark {
+  font-size: 5.7mm;
+  font-weight: 800;
+  letter-spacing: 0.9mm;
+  line-height: 1;
+  color: var(--yellow);
+}
+
+.wordmark small {
+  display: block;
+  font-size: 1.8mm;
+  letter-spacing: 0.35mm;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 0.5mm;
+}
+
+.head-right { text-align: right; line-height: 1.25; }
+.head-right .t1 { font-size: 2.9mm; font-weight: 800; }
+.head-right .t2 { font-size: 2.1mm; opacity: .85; }
+
+.fee {
+  display: inline-block;
+  background: var(--pink);
+  color: #fff;
+  font-size: 2.6mm;
+  font-weight: 800;
+  padding: 0.6mm 1.6mm;
+  border-radius: 1mm;
+  margin-top: 0.8mm;
+}
+
+.head-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+  padding: 0.9mm 2.5mm;
+  background: var(--faint);
+  font-size: 2.3mm;
+}
+
+.head-bar b { font-size: 2.2mm; letter-spacing: .2mm; }
+
+.grp {
+  border: 0.3mm solid var(--navy);
+  border-radius: 1mm;
+  padding: 0.4mm 1.4mm;
+  font-weight: 700;
+  font-size: 2.1mm;
+  background: #fff;
+}
+.grp.b { background: var(--yellow); }
+.grp.c { background: #ff8f8f; }
+
+/* --------------------------------------------------------------- sections */
+.sec-title {
+  font-size: 2.2mm;
+  font-weight: 800;
+  letter-spacing: .5mm;
+  text-transform: uppercase;
+  color: var(--purple);
+  border-bottom: 0.3mm solid var(--rule);
+  padding-bottom: 0.35mm;
+  margin-bottom: 0.75mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.sec-title span { font-weight: 600; text-transform: none; letter-spacing: 0; font-size: 2mm; color: #6a7396; }
+
+.row { display: flex; gap: 1.8mm; }
+.row + .row { margin-top: 1mm; }
+
+/* a labelled writing box */
+.f { flex: 1; min-width: 0; }
+.f label {
+  display: block;
+  font-size: 1.95mm;
+  font-weight: 700;
+  letter-spacing: .15mm;
+  color: #4a5480;
+  margin-bottom: 0.5mm;
+  text-transform: uppercase;
+}
+.f label i { font-style: normal; color: var(--pink); }
+.f .box {
+  height: 5.9mm;
+  border: 0.3mm solid var(--rule);
+  border-radius: 1mm;
+  background: #fff;
+}
+.f .box.tall { height: 9mm; }
+
+/* boxes split into character cells, for phone numbers and dates */
+.cells { display: flex; height: 5.9mm; }
+.cells i {
+  flex: 1;
+  border: 0.3mm solid var(--rule);
+  border-right: none;
+  font-style: normal;
+}
+.cells i:first-child { border-radius: 1mm 0 0 1mm; }
+.cells i:last-child { border-right: 0.3mm solid var(--rule); border-radius: 0 1mm 1mm 0; }
+.cells i.gap { flex: 0 0 1.2mm; border: none; }
+
+/* tick options in a line */
+.ticks { display: flex; gap: 2.5mm; align-items: center; height: 5.9mm; padding-left: 0.5mm; }
+.tick { display: flex; align-items: center; gap: 1mm; font-size: 2.3mm; }
+.tick u {
+  display: inline-block;
+  width: 3.2mm; height: 3.2mm;
+  border: 0.35mm solid var(--navy);
+  border-radius: 0.6mm;
+  text-decoration: none;
+}
+
+/* ---------------------------------------------------------- competitions */
+.comp { display: flex; flex-direction: column; gap: 0.55mm; }
+
+.comp-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+  border: 0.3mm solid var(--rule);
+  border-left: 1.2mm solid var(--navy);
+  border-radius: 1mm;
+  padding: 0.45mm 1.5mm;
+  min-height: 5.1mm;
+}
+.comp-row.onsite { border-left-color: var(--pink); }
+
+.comp-row u {
+  flex: 0 0 auto;
+  width: 3.4mm; height: 3.4mm;
+  border: 0.35mm solid var(--navy);
+  border-radius: 0.6mm;
+  text-decoration: none;
+}
+.comp-name { flex: 1; font-size: 2.5mm; font-weight: 700; }
+.comp-when { font-size: 1.95mm; color: #5a638c; text-align: right; line-height: 1.2; }
+.comp-when b { display: block; font-weight: 700; color: var(--ink); }
+
+.song {
+  display: flex;
+  gap: 1.8mm;
+  margin-top: 0.8mm;
+  padding: 0.9mm 1.5mm;
+  background: var(--faint);
+  border-radius: 1mm;
+}
+.song .f label { font-size: 1.85mm; }
+.song .f .box { height: 5.2mm; background: #fff; }
+.song-note { font-size: 1.8mm; color: #5a638c; margin-top: 0.5mm; }
+
+/* -------------------------------------------------------------- declaration */
+.decl {
+  border: 0.3mm solid var(--rule);
+  border-radius: 1mm;
+  padding: 1.1mm 1.6mm;
+  font-size: 1.9mm;
+  line-height: 1.3;
+  color: #3d4770;
+}
+.decl .agree { display: flex; gap: 1.2mm; align-items: flex-start; }
+.decl u {
+  flex: 0 0 auto;
+  width: 3mm; height: 3mm;
+  border: 0.35mm solid var(--navy);
+  border-radius: 0.6mm;
+  text-decoration: none;
+  margin-top: 0.3mm;
+}
+.sign { display: flex; gap: 2.5mm; margin-top: 1mm; }
+.sign .f label { font-size: 1.85mm; }
+.sign .f .line { border-bottom: 0.3mm solid var(--ink); height: 4.6mm; }
+
+/* -------------------------------------------------------------- office use */
+.office {
+  margin-top: auto;
+  border: 0.3mm dashed #8d96bb;
+  border-radius: 1mm;
+  padding: 0.9mm 1.6mm;
+  background: #fbfbfe;
+}
+.office .sec-title { color: #6a7396; border: none; margin: 0 0 0.6mm; padding: 0; font-size: 1.9mm; }
+.office .f label { font-size: 1.75mm; }
+.office .f .box { height: 4.8mm; }
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.85mm;
+  color: #5a638c;
+  padding-top: 0.5mm;
+}
+.foot b { color: var(--navy); }
+
+/* on screen only, so the page looks like paper while checking it */
+@media screen {
+  body { background: #e8e9f2; padding: 8mm 0; }
+  .sheet { margin: 0 auto; box-shadow: 0 4mm 12mm rgba(0,0,0,.18); background: #fff; }
+}
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <!-- ============================ FORM (repeated identically) ============ -->
+  <section class="form">
+
+    <div class="head">
+      <div class="head-top">
+        <div class="wordmark">UTKARSH<small>AN INTER SCHOOL CULTURAL EXTRAVAGANZA</small></div>
+        <div class="head-right">
+          <div class="t1">REGISTRATION FORM</div>
+          <div class="t2">ISKCON Cultural Fest &middot; 2026</div>
+          <div class="fee">FEE &#8377;99</div>
+        </div>
+      </div>
+      <div class="head-bar">
+        <b>GROUPS</b>
+        <span class="grp">A &middot; Class I&ndash;IV</span>
+        <span class="grp b">B &middot; Class V&ndash;VII</span>
+        <span class="grp c">C &middot; Class VIII&ndash;X</span>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------------- student ----- -->
+    <div>
+      <div class="sec-title">Student <span>Write in CAPITALS</span></div>
+
+      <div class="row">
+        <div class="f" style="flex:3">
+          <label>Full name <i>*</i></label>
+          <div class="box"></div>
+        </div>
+        <div class="f" style="flex:1.15">
+          <label>Class <i>*</i></label>
+          <div class="box"></div>
+        </div>
+        <div class="f" style="flex:1">
+          <label>Group</label>
+          <div class="box"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="f" style="flex:1.5">
+          <label>Date of birth <i>*</i></label>
+          <div class="cells">
+            <i></i><i></i><i class="gap"></i><i></i><i></i><i class="gap"></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+        <div class="f" style="flex:1.6">
+          <label>Gender <i>*</i></label>
+          <div class="ticks">
+            <span class="tick"><u></u> Female</span>
+            <span class="tick"><u></u> Male</span>
+            <span class="tick"><u></u> Other</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="f">
+          <label>School name <i>*</i></label>
+          <div class="box"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------------- contact ----- -->
+    <div>
+      <div class="sec-title">Contact <span>Email or WhatsApp required</span></div>
+
+      <div class="row">
+        <div class="f" style="flex:1.4">
+          <label>Parent / guardian name <i>*</i></label>
+          <div class="box"></div>
+        </div>
+        <div class="f" style="flex:1.35">
+          <label>Guardian phone <i>*</i></label>
+          <div class="cells">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="f" style="flex:1.35">
+          <label>WhatsApp number</label>
+          <div class="cells">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+        <div class="f" style="flex:1.35">
+          <label>Student phone</label>
+          <div class="cells">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="f">
+          <label>Email</label>
+          <div class="box"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="f">
+          <label>Address</label>
+          <div class="box"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------ competitions ---- -->
+    <div>
+      <div class="sec-title">Competitions <span>Tick any &mdash; one fee covers all</span></div>
+
+      <div class="comp">
+        <div class="comp-row">
+          <u></u>
+          <span class="comp-name">Vedic Quiz</span>
+          <span class="comp-when"><b>Sun 23 Aug</b>Online &middot; 9&ndash;11 am</span>
+        </div>
+        <div class="comp-row">
+          <u></u>
+          <span class="comp-name">Gita Sloka Recitation</span>
+          <span class="comp-when"><b>Sun 23 Aug</b>Online &middot; 4&ndash;6 pm</span>
+        </div>
+        <div class="comp-row onsite">
+          <u></u>
+          <span class="comp-name">Vedic Art</span>
+          <span class="comp-when"><b>Sun 30 Aug</b>Temple &middot; 9 am&ndash;12 pm</span>
+        </div>
+        <div class="comp-row onsite">
+          <u></u>
+          <span class="comp-name">Vedic Fancy Dress</span>
+          <span class="comp-when"><b>Sun 30 Aug</b>Temple &middot; 9&ndash;11 am</span>
+        </div>
+        <div class="comp-row onsite">
+          <u></u>
+          <span class="comp-name">Devotional Bhajan</span>
+          <span class="comp-when"><b>Sun 30 Aug</b>Temple &middot; 4&ndash;6 pm</span>
+        </div>
+      </div>
+
+      <div class="song">
+        <div class="f">
+          <label>Bhajan &mdash; 1st choice of song</label>
+          <div class="box"></div>
+        </div>
+        <div class="f">
+          <label>2nd choice</label>
+          <div class="box"></div>
+        </div>
+      </div>
+      <div class="song-note">
+        Only 3 students may sing the same song, so give a second choice &mdash; we use it if the first is taken.
+      </div>
+    </div>
+
+    <!-- --------------------------------------------------- payment ------ -->
+    <div>
+      <div class="sec-title">Payment <span>&#8377;99 per student</span></div>
+      <div class="row">
+        <div class="f" style="flex:1.5">
+          <label>How paid</label>
+          <div class="ticks">
+            <span class="tick"><u></u> UPI</span>
+            <span class="tick"><u></u> Cash at temple, 30 Aug</span>
+          </div>
+        </div>
+        <div class="f" style="flex:1.2">
+          <label>UPI reference no.</label>
+          <div class="box"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------ declaration ----- -->
+    <div class="decl">
+      <div class="agree">
+        <u></u>
+        <span>
+          I confirm these details are correct, and I allow photographs and video from the
+          festival, which may include my child, to be used by the organisers for the
+          festival&rsquo;s own publicity.
+        </span>
+      </div>
+      <div class="sign">
+        <div class="f" style="flex:2">
+          <label>Guardian signature</label>
+          <div class="line"></div>
+        </div>
+        <div class="f" style="flex:1">
+          <label>Date</label>
+          <div class="line"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------- office use ----- -->
+    <div class="office">
+      <div class="sec-title">For office use</div>
+      <div class="row">
+        <div class="f"><label>Registration code</label><div class="box"></div></div>
+        <div class="f"><label>Fee received by</label><div class="box"></div></div>
+        <div class="f" style="flex:.7"><label>Entered</label><div class="box"></div></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>ISKCON Guwahati, Ulubari &middot; <b>93657 71206</b> &middot; <b>93950 40843</b></span>
+      <span>Register online: <b>utkarsh-festival.vercel.app</b></span>
+    </div>
+
+  </section>
+
+  <!-- ==================== identical second copy ========================== -->
+  <section class="form">
+
+    <div class="head">
+      <div class="head-top">
+        <div class="wordmark">UTKARSH<small>AN INTER SCHOOL CULTURAL EXTRAVAGANZA</small></div>
+        <div class="head-right">
+          <div class="t1">REGISTRATION FORM</div>
+          <div class="t2">ISKCON Cultural Fest &middot; 2026</div>
+          <div class="fee">FEE &#8377;99</div>
+        </div>
+      </div>
+      <div class="head-bar">
+        <b>GROUPS</b>
+        <span class="grp">A &middot; Class I&ndash;IV</span>
+        <span class="grp b">B &middot; Class V&ndash;VII</span>
+        <span class="grp c">C &middot; Class VIII&ndash;X</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">Student <span>Write in CAPITALS</span></div>
+      <div class="row">
+        <div class="f" style="flex:3"><label>Full name <i>*</i></label><div class="box"></div></div>
+        <div class="f" style="flex:1.15"><label>Class <i>*</i></label><div class="box"></div></div>
+        <div class="f" style="flex:1"><label>Group</label><div class="box"></div></div>
+      </div>
+      <div class="row">
+        <div class="f" style="flex:1.5">
+          <label>Date of birth <i>*</i></label>
+          <div class="cells">
+            <i></i><i></i><i class="gap"></i><i></i><i></i><i class="gap"></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+        <div class="f" style="flex:1.6">
+          <label>Gender <i>*</i></label>
+          <div class="ticks">
+            <span class="tick"><u></u> Female</span>
+            <span class="tick"><u></u> Male</span>
+            <span class="tick"><u></u> Other</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="f"><label>School name <i>*</i></label><div class="box"></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">Contact <span>Email or WhatsApp required</span></div>
+      <div class="row">
+        <div class="f" style="flex:1.4"><label>Parent / guardian name <i>*</i></label><div class="box"></div></div>
+        <div class="f" style="flex:1.35">
+          <label>Guardian phone <i>*</i></label>
+          <div class="cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="f" style="flex:1.35">
+          <label>WhatsApp number</label>
+          <div class="cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="f" style="flex:1.35">
+          <label>Student phone</label>
+          <div class="cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="row"><div class="f"><label>Email</label><div class="box"></div></div></div>
+      <div class="row"><div class="f"><label>Address</label><div class="box"></div></div></div>
+    </div>
+
+    <div>
+      <div class="sec-title">Competitions <span>Tick any &mdash; one fee covers all</span></div>
+      <div class="comp">
+        <div class="comp-row">
+          <u></u><span class="comp-name">Vedic Quiz</span>
+          <span class="comp-when"><b>Sun 23 Aug</b>Online &middot; 9&ndash;11 am</span>
+        </div>
+        <div class="comp-row">
+          <u></u><span class="comp-name">Gita Sloka Recitation</span>
+          <span class="comp-when"><b>Sun 23 Aug</b>Online &middot; 4&ndash;6 pm</span>
+        </div>
+        <div class="comp-row onsite">
+          <u></u><span class="comp-name">Vedic Art</span>
+          <span class="comp-when"><b>Sun 30 Aug</b>Temple &middot; 9 am&ndash;12 pm</span>
+        </div>
+        <div class="comp-row onsite">
+          <u></u><span class="comp-name">Vedic Fancy Dress</span>
+          <span class="comp-when"><b>Sun 30 Aug</b>Temple &middot; 9&ndash;11 am</span>
+        </div>
+        <div class="comp-row onsite">
+          <u></u><span class="comp-name">Devotional Bhajan</span>
+          <span class="comp-when"><b>Sun 30 Aug</b>Temple &middot; 4&ndash;6 pm</span>
+        </div>
+      </div>
+      <div class="song">
+        <div class="f"><label>Bhajan &mdash; 1st choice of song</label><div class="box"></div></div>
+        <div class="f"><label>2nd choice</label><div class="box"></div></div>
+      </div>
+      <div class="song-note">
+        Only 3 students may sing the same song, so give a second choice &mdash; we use it if the first is taken.
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">Payment <span>&#8377;99 per student</span></div>
+      <div class="row">
+        <div class="f" style="flex:1.5">
+          <label>How paid</label>
+          <div class="ticks">
+            <span class="tick"><u></u> UPI</span>
+            <span class="tick"><u></u> Cash at temple, 30 Aug</span>
+          </div>
+        </div>
+        <div class="f" style="flex:1.2"><label>UPI reference no.</label><div class="box"></div></div>
+      </div>
+    </div>
+
+    <div class="decl">
+      <div class="agree">
+        <u></u>
+        <span>
+          I confirm these details are correct, and I allow photographs and video from the
+          festival, which may include my child, to be used by the organisers for the
+          festival&rsquo;s own publicity.
+        </span>
+      </div>
+      <div class="sign">
+        <div class="f" style="flex:2"><label>Guardian signature</label><div class="line"></div></div>
+        <div class="f" style="flex:1"><label>Date</label><div class="line"></div></div>
+      </div>
+    </div>
+
+    <div class="office">
+      <div class="sec-title">For office use</div>
+      <div class="row">
+        <div class="f"><label>Registration code</label><div class="box"></div></div>
+        <div class="f"><label>Fee received by</label><div class="box"></div></div>
+        <div class="f" style="flex:.7"><label>Entered</label><div class="box"></div></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>ISKCON Guwahati, Ulubari &middot; <b>93657 71206</b> &middot; <b>93950 40843</b></span>
+      <span>Register online: <b>utkarsh-festival.vercel.app</b></span>
+    </div>
+
+  </section>
+
+</div>
+
+</body>
+</html>

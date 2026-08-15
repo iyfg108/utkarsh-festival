@@ -84,6 +84,8 @@ export interface Registration {
   date_of_birth: string
   gender: string
   class_level: number
+  /** Derived in the database from class_level. A = I-IV, B = V-VII, C = VIII-X. */
+  class_group: 'A' | 'B' | 'C'
   school_name: string
   guardian_name: string
   guardian_phone: string
@@ -251,6 +253,8 @@ export interface StatusResult {
   reg_code: string
   full_name: string
   class_level: number
+  /** Derived in the database from class_level. A = I-IV, B = V-VII, C = VIII-X. */
+  class_group: 'A' | 'B' | 'C'
   school_name: string
   status: RegStatus
   fee_amount: number

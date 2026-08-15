@@ -77,6 +77,7 @@ export default function Registrations() {
         'Registration code': r.reg_code,
         Name: r.full_name,
         Class: r.class_level,
+        Group: r.class_group,
         School: r.school_name,
         'Date of birth': formatDate(r.date_of_birth),
         Gender: r.gender,
@@ -224,7 +225,7 @@ function Row({ r }: { r: RegistrationRow }) {
           {r.full_name}
         </Link>
         <p className="text-[12px] text-night-950/45">
-          Class {r.class_level} · {r.guardian_phone}
+          Class {r.class_level} · Group {r.class_group} · {r.guardian_phone}
         </p>
       </td>
       <td className="px-4 py-3.5">
