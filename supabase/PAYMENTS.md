@@ -34,12 +34,32 @@ for a ₹99 student festival it is usually all you need.
 
 ## What the student sees
 
-A QR code, a **tap-to-pay** button that opens GPay / PhonePe / Paytm with the
-amount pre-filled, and the UPI ID as copyable text. After paying they enter the
-UTR (their app calls it *UTR*, *Transaction ID* or *Reference No*).
+Two numbered steps: pay, then report the reference. What step 1 offers depends
+on the device, because a phone cannot scan its own screen.
 
-Their registration then reads **awaiting verification** — the place is held,
-but not yet confirmed.
+**On a phone** — an **Open my UPI app** button leads. It is a `upi://pay` link
+with the amount, our VPA and the registration code already filled in; Android
+answers it with the system chooser listing every UPI app the student has, so
+they pick whichever they use. Below it is the UPI ID as copyable text, and the
+QR is tucked behind *Show QR code* for the case where a parent pays from a
+second handset.
+
+iPhones are the exception: hardly any Indian UPI app claims `upi://` on iOS, so
+that student also gets named buttons for Google Pay, PhonePe, Paytm and BHIM,
+which use each app's own scheme. A button for an app they do not have simply
+does nothing, which is why the copyable UPI ID is always on screen too.
+
+**On a desktop** — the QR leads, with the UPI ID beside it. No app buttons; a
+desktop has no UPI app to open.
+
+Paying means leaving the site, so the return trip is handled: when the student
+comes back, the page notices, says *Welcome back* and puts the cursor in the
+reference box. If the browser dropped the tab while they were away, the same
+box is on **Check status**, reachable with their code and guardian phone.
+
+After paying they enter the UTR (their app calls it *UTR*, *Transaction ID* or
+*Reference No*). Their registration then reads **awaiting verification** — the
+place is held, but not yet confirmed.
 
 ## Checking payments
 

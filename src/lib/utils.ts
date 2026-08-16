@@ -149,7 +149,46 @@ export function upiPayUri(opts: {
     cu: 'INR',
   })
   if (opts.note) params.set('tn', opts.note)
-  return `upi://pay?${params.toString()}`
+  // URLSearchParams writes spaces as "+", which is only correct for HTML form
+  // bodies. UPI apps read these as plain URI components, and the sloppier ones
+  // render the payee as "ISKCON+Guwahati" and put a literal "+" in the note we
+  // later match against the statement. %20 is unambiguous everywhere.
+  return `upi://pay?${params.toString().replace(/\+/g, '%20')}`
+}
+
+/**
+ * Per-app deep links carrying the same parameters as `upiPayUri`.
+ *
+ * On Android every UPI app claims `upi://pay`, so the plain link already opens
+ * the system chooser listing whatever the student has installed — which is what
+ * we want, and these are not needed. On iOS almost nothing claims `upi://`;
+ * the apps register their own schemes instead, so this is the only way to reach
+ * them. A link to an app that is not installed simply does nothing, which is
+ * why the UPI ID is always shown as well.
+ */
+export function upiAppLinks(uri: string): { name: string; href: string }[] {
+  const query = uri.slice(uri.indexOf('?'))
+  return [
+    { name: 'Google Pay', href: `gpay://upi/pay${query}` },
+    { name: 'PhonePe', href: `phonepe://pay${query}` },
+    { name: 'Paytm', href: `paytmmp://pay${query}` },
+    { name: 'BHIM', href: `bhim://pay${query}` },
+  ]
+}
+
+/**
+ * Coarse platform read. Used only to decide between showing a QR code and
+ * showing "open your UPI app" buttons — a phone cannot scan its own screen,
+ * and a desktop cannot open a UPI app.
+ */
+export function devicePlatform(): 'android' | 'ios' | 'desktop' {
+  if (typeof navigator === 'undefined') return 'desktop'
+  const ua = navigator.userAgent
+  if (/Android/i.test(ua)) return 'android'
+  if (/iPad|iPhone|iPod/.test(ua)) return 'ios'
+  // iPadOS 13+ reports itself as a Mac; the touch points give it away.
+  if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return 'ios'
+  return 'desktop'
 }
 
 export const CERTIFICATE_LABEL: Record<CertificateStatus, string> = {
