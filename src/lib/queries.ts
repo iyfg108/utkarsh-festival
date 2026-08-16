@@ -3,7 +3,6 @@ import type {
   AdminUser,
   CreateOrderResult,
   FestivalSettings,
-  GalleryItem,
   PublicStats,
   Registration,
   RegistrationDraft,
@@ -55,16 +54,6 @@ export async function fetchAvailability(trackId?: string): Promise<SelectionAvai
   let q = supabase.from('selection_availability').select('*').order('sort_order')
   if (trackId) q = q.eq('track_id', trackId)
   return unwrap(await q)
-}
-
-export async function fetchGallery(): Promise<GalleryItem[]> {
-  return unwrap(
-    await supabase
-      .from('gallery_items')
-      .select('*')
-      .order('year', { ascending: false })
-      .order('sort_order'),
-  )
 }
 
 export async function fetchPublicStats(): Promise<PublicStats> {
@@ -348,6 +337,24 @@ export async function upsertSelectionItem(
   if (error) throw error
 }
 
+/**
+ * Partial patch of one song.
+ *
+ * Deliberately `.update()` rather than `.upsert()`: an upsert builds its column
+ * list from the keys you send, so a partial payload happens to leave the rest
+ * alone — but that is a property of PostgREST, not something visible here. The
+ * columns at stake are `taken_count` and `max_slots`, which together are the
+ * song cap, so this uses the operation whose semantics are partial by
+ * definition instead of relying on that.
+ */
+export async function updateSelectionItem(
+  id: string,
+  patch: Partial<SelectionItem>,
+): Promise<void> {
+  const { error } = await supabase.from('selection_items').update(patch).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteSelectionItem(id: string): Promise<void> {
   const { error } = await supabase.from('selection_items').delete().eq('id', id)
   if (error) throw error
@@ -355,18 +362,6 @@ export async function deleteSelectionItem(id: string): Promise<void> {
 
 export async function updateTrack(id: string, patch: Partial<Track>): Promise<void> {
   const { error } = await supabase.from('tracks').update(patch).eq('id', id)
-  if (error) throw error
-}
-
-export async function upsertGalleryItem(
-  item: Partial<GalleryItem> & { year: number; image_url: string },
-): Promise<void> {
-  const { error } = await supabase.from('gallery_items').upsert(item)
-  if (error) throw error
-}
-
-export async function deleteGalleryItem(id: string): Promise<void> {
-  const { error } = await supabase.from('gallery_items').delete().eq('id', id)
   if (error) throw error
 }
 

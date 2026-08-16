@@ -117,11 +117,23 @@ long pole, not the code.
 
 ## Smaller things noticed along the way
 
-- **Gallery photos are still generated placeholder tiles.** Any row whose
-  `image_url` starts with `placeholder:` renders a coloured motif instead of a
-  photo. Upload real photos to a public Supabase Storage bucket and paste the
-  URLs in Admin → Gallery. The admin screen flags how many are still
-  placeholders.
+- **The gallery is switched off, and the site ships no images at all.** There
+  were no real photographs for 2026 and the generated placeholder tiles read as
+  a broken page, so the gallery page, its nav and footer links, the home-page
+  section and the admin screen are all gone; `/gallery` redirects home. The four
+  Krishna paintings went with them, which is why `index.html` no longer sets an
+  `og:image` and the link preview is a `summary` card rather than
+  `summary_large_image`.
+
+  Nothing was migrated away: `gallery_items` and its policies are still in
+  `schema.sql` (the six placeholder rows are still in the live database, now
+  inert), the painting masters are still tracked in `art-src/`, and the deleted
+  components are in git. Bringing either back for 2027 is a revert of the commit
+  that removed them, not a schema change.
+
+  To take real photographs live you would also need `scripts/optimise-art.sh`
+  back, or a public Supabase Storage bucket if the photos are uploaded rather
+  than committed.
 - **`.env.example` currently holds the real project URL and anon key.** Both are
   safe to publish (the anon key is protected by row-level security), but the
   file is git-tracked — so never put the **service role** key there. It belongs

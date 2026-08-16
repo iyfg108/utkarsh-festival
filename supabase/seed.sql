@@ -154,20 +154,13 @@ select t.id, v.title, v.subtitle, v.cap, v.ord
    );
 
 -- ---------------------------------------------------------------------------
--- Gallery — generated placeholder tiles until real photos are uploaded.
--- Replace image_url with a Supabase Storage public URL to show a photograph.
+-- Gallery — deliberately not seeded.
+--
+-- The gallery is switched off for 2026: there were no real photographs to show
+-- and the generated placeholder tiles read as a broken page. The table and its
+-- policies are still in schema.sql, so turning it back on for a later edition
+-- means restoring the page component, not migrating the database.
 -- ---------------------------------------------------------------------------
-insert into gallery_items (year, title, caption, image_url, is_featured, sort_order)
-select v.year, v.title, v.caption, v.url, v.featured, v.ord
-  from (values
-    (2025, 'At ISKCON Ulubari',   'The temple hall on the day of the competition.',       'placeholder:temple-1',  true,  1),
-    (2025, 'Vedic Art',           'Ninety minutes, one theme, three hundred imaginations.','placeholder:art-1',     true,  2),
-    (2025, 'Devotional Bhajan',   'A Class 6 student opening with Jaya Radha Madhava.',    'placeholder:music-1',   true,  3),
-    (2025, 'Fancy Dress',         'The fancy dress round is always the loudest.',          'placeholder:costume-1', true,  4),
-    (2024, 'Shloka Uchcharan',    'Verses from the Gita, recited from memory.',            'placeholder:scroll-1',  false, 5),
-    (2024, 'Prize distribution',  'Certificates, prizes and prasadam for every participant.','placeholder:award-1', false, 6)
-  ) as v(year, title, caption, url, featured, ord)
- where not exists (select 1 from gallery_items g where g.image_url = v.url);
 
 -- ---------------------------------------------------------------------------
 -- Settings

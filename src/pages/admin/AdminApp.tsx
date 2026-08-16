@@ -11,7 +11,6 @@ import Verify from './Verify'
 import Messages from './Messages'
 import DaySheet from './DaySheet'
 import SelectionsAdmin from './SelectionsAdmin'
-import ContentAdmin from './ContentAdmin'
 import SettingsAdmin from './SettingsAdmin'
 import UsersAdmin from './UsersAdmin'
 import { NoAccess } from './NoAccess'
@@ -34,7 +33,6 @@ export default function AdminApp() {
         <Route path="messages" element={<Messages />} />
         <Route path="day-sheet" element={<DaySheet />} />
         <Route path="songs" element={isSuperAdmin ? <SelectionsAdmin /> : <NoAccess inline />} />
-        <Route path="gallery" element={isSuperAdmin ? <ContentAdmin /> : <NoAccess inline />} />
         <Route path="settings" element={isSuperAdmin ? <SettingsAdmin /> : <NoAccess inline />} />
         <Route path="users" element={isSuperAdmin ? <UsersAdmin /> : <NoAccess inline />} />
         <Route path="*" element={<NoAccess inline title="Page not found" />} />

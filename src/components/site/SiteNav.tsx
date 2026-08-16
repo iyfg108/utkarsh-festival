@@ -8,7 +8,6 @@ import { ArrowRightIcon, CloseIcon, MenuIcon } from '@/components/Icons'
 const LINKS = [
   { to: '/', label: 'Home', end: true },
   { to: '/competitions', label: 'Competitions' },
-  { to: '/gallery', label: 'Gallery' },
   { to: '/faq', label: 'FAQ' },
   { to: '/contact', label: 'Contact' },
 ]

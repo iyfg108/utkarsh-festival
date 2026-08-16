@@ -15,7 +15,6 @@ import {
   MapPinIcon,
 } from '@/components/Icons'
 import { Lotus, MarigoldGarland, StarField } from '@/components/Decor'
-import { Artwork } from '@/components/Artwork'
 import { UpiPayPanel } from '@/components/site/UpiPayPanel'
 
 interface SuccessState {
@@ -277,16 +276,7 @@ export default function RegisterSuccess() {
           </div>
         </div>
 
-        <div className="mt-8 overflow-hidden rounded-4xl border border-night-950/8 stack-shadow">
-          <Artwork
-            name="feeding"
-            rounded={false}
-            sizes="(min-width: 768px) 42rem, 100vw"
-            className="aspect-[4/3] object-[50%_35%]"
-          />
-        </div>
-
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <ButtonLink to="/status" variant="outline">
             Check my status
           </ButtonLink>

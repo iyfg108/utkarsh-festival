@@ -7,6 +7,7 @@ import {
   fetchSelectionItems,
   logAudit,
   recountSlots,
+  updateSelectionItem,
   upsertSelectionItem,
 } from '@/lib/queries'
 import { friendlyError } from '@/lib/supabase'
@@ -236,12 +237,7 @@ export default function SelectionsAdmin() {
                           label={`Toggle ${i.title}`}
                           onChange={async (next) => {
                             try {
-                              await upsertSelectionItem({
-                                id: i.id,
-                                track_id: i.track_id,
-                                title: i.title,
-                                is_active: next,
-                              })
+                              await updateSelectionItem(i.id, { is_active: next })
                               reload()
                             } catch (err) {
                               toast.error(friendlyError(err))

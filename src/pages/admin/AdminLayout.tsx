@@ -9,7 +9,6 @@ import {
   ChartIcon,
   ClipboardIcon,
   CloseIcon,
-  ImageIcon,
   MailIcon,
   MenuIcon,
   MusicIcon,
@@ -27,7 +26,6 @@ const NAV = [
   { to: '/admin/day-sheet', label: 'Day sheet', icon: ClipboardIcon },
   { to: '/admin/judging', label: 'Judging & prizes', icon: TrophyIcon },
   { to: '/admin/songs', label: 'Bhajan songs', icon: MusicIcon, superOnly: true },
-  { to: '/admin/gallery', label: 'Gallery', icon: ImageIcon, superOnly: true },
   { to: '/admin/users', label: 'Organisers', icon: UsersIcon, superOnly: true },
   { to: '/admin/settings', label: 'Settings', icon: SettingsIcon, superOnly: true },
 ]

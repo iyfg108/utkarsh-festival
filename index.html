@@ -19,21 +19,15 @@
 
     <!--
       Link previews. Most students arrive from a link pasted into a school
-      WhatsApp group, so this image is doing real work — without it the link
-      unfurls as a bare text card. Deliberately JPEG: several unfurlers still
-      handle WebP unreliably. Absolute URL is required by the crawlers; update
-      the host here if the site moves.
+      WhatsApp group. There is deliberately no og:image — the site ships no
+      images at all — so the card is "summary" rather than "summary_large_image":
+      asking for the large card without an image gets you an empty grey box in
+      some unfurlers. If a preview image is ever added, put it back to
+      summary_large_image and give og:image an absolute URL.
     -->
-    <meta property="og:image" content="https://utkarsh-festival.vercel.app/art/og.jpg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta
-      property="og:image:alt"
-      content="Krishna and the cowherd boys running through the forest with their cows."
-    />
     <meta property="og:site_name" content="Utkarsh Heritage Festival" />
     <meta property="og:locale" content="en_IN" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary" />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 

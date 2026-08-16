@@ -136,16 +136,6 @@ export interface TeamMember {
   sort_order: number
 }
 
-export interface GalleryItem {
-  id: string
-  year: number
-  title: string | null
-  caption: string | null
-  image_url: string
-  is_featured: boolean
-  sort_order: number
-}
-
 export interface AdminUser {
   id: string
   full_name: string

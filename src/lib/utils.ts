@@ -309,17 +309,6 @@ export function downloadCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url)
 }
 
-/** Deterministic pastel pair for placeholder gallery tiles. */
-export function placeholderPalette(key: string): { from: string; to: string; hue: number } {
-  let h = 0
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 360
-  return {
-    hue: h,
-    from: `hsl(${h} 78% 62%)`,
-    to: `hsl(${(h + 48) % 360} 72% 46%)`,
-  }
-}
-
 export function pluralise(n: number, one: string, many?: string): string {
   return n === 1 ? one : (many ?? `${one}s`)
 }

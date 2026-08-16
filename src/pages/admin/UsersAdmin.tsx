@@ -23,7 +23,7 @@ const ROLES: { value: AdminRole; label: string; blurb: string }[] = [
     value: 'super_admin',
     label: 'Super admin',
     blurb:
-      'Everything — settings, the song list, the gallery, all registrations, payments, and managing these accounts.',
+      'Everything — settings, the song list, all registrations, payments, and managing these accounts.',
   },
   {
     value: 'judge',

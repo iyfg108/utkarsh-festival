@@ -15,7 +15,6 @@ import CompetitionDetail from '@/pages/CompetitionDetail'
 import NotFound from '@/pages/NotFound'
 
 // Everything else loads on demand, so the first paint on a phone stays light.
-const Gallery = lazy(() => import('@/pages/Gallery'))
 const Faq = lazy(() => import('@/pages/Faq'))
 const Contact = lazy(() => import('@/pages/Contact'))
 const Register = lazy(() => import('@/pages/Register'))
@@ -37,7 +36,10 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="competitions" element={<Competitions />} />
               <Route path="competitions/:slug" element={<CompetitionDetail />} />
-              <Route path="gallery" element={<Gallery />} />
+              {/* The gallery is switched off for 2026 — nothing worth showing
+                  yet, and the placeholder tiles read as broken. Kept as a
+                  redirect so any link already shared still lands somewhere. */}
+              <Route path="gallery" element={<Navigate to="/" replace />} />
               <Route path="faq" element={<Faq />} />
               <Route path="contact" element={<Contact />} />
               <Route path="register" element={<Register />} />

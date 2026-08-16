@@ -70,7 +70,7 @@ Run these in the Supabase **SQL editor**, in order:
 |---|---|
 | `supabase/reset.sql` | Drops the old schema. **Deletes all registrations.** Backs up organiser logins first. |
 | `supabase/schema.sql` | Tables, constraints, row-level security, functions. Restores organiser logins. |
-| `supabase/seed.sql` | The five competitions, the bhajan song list, gallery, settings. |
+| `supabase/seed.sql` | The five competitions, the bhajan song list, settings. |
 | `supabase/patches.sql` | Updates settings on an *already seeded* database (seed.sql never overwrites them). |
 
 `schema.sql` and `seed.sql` are safe to re-run. `reset.sql` is not — it is
@@ -153,6 +153,33 @@ supabase functions deploy razorpay-webhook
 
 Then add the webhook in the Razorpay dashboard and set
 `RAZORPAY_WEBHOOK_SECRET`.
+
+---
+
+## Changing things without a redeploy
+
+Most of what an organiser needs to change lives in the database, not the code,
+so it takes effect the moment you press Save. All four need a **super admin**
+account — a judge does not see these screens in the nav.
+
+| To change | Go to |
+|---|---|
+| Phone, email, WhatsApp, Instagram | **Admin → Settings → Contact details** |
+| The devotional song list, and how many students may sing each one | **Admin → Bhajan songs** |
+| Fee, whether registration is open, the two dates, venue | **Admin → Settings** |
+| UPI ID, payee name, which payment methods are offered | **Admin → Settings → How students pay** |
+
+The contact details feed the footer, the contact page and the payment reminder
+messages. The song list feeds the bhajan step of the registration form.
+
+Two guards on the song list are worth knowing, because both surface as a
+refusal rather than silent data loss:
+
+- A song that a student has already chosen **cannot be deleted** — the database
+  refuses it (`on delete restrict`). Switch it off instead: it disappears from
+  the registration form while existing entries stay intact.
+- The cap **cannot be set below the number who already chose it**. Free up
+  entries first.
 
 ---
 

@@ -1,6 +1,6 @@
 import { useFestival } from '@/context/FestivalContext'
 import { useAsync } from '@/hooks/useAsync'
-import { fetchGallery, fetchPublicStats } from '@/lib/queries'
+import { fetchPublicStats } from '@/lib/queries'
 import { cn, formatLongDate } from '@/lib/utils'
 import { ButtonLink } from '@/components/ui/Button'
 import { CountUp, Reveal, SectionHeading } from '@/components/ui/Primitives'
@@ -18,24 +18,20 @@ import {
   Flute,
   Lotus,
   MarigoldGarland,
-  PlaceholderTile,
   Rangoli,
   SoftGlow,
   StarField,
 } from '@/components/Decor'
-import { Artwork } from '@/components/Artwork'
 import { CompetitionCard } from '@/components/site/CompetitionCard'
 import { Countdown } from '@/components/site/Countdown'
 
 export default function Home() {
   const { settings, tracks, onlineTracks, onsiteTracks } = useFestival()
   const stats = useAsync(() => fetchPublicStats(), [])
-  const gallery = useAsync(() => fetchGallery(), [])
 
   const event = settings?.event
   const reg = settings?.registration
   const regOpen = reg?.open ?? false
-  const featured = (gallery.data ?? []).filter((g) => g.is_featured).slice(0, 4)
 
   return (
     <>
@@ -130,32 +126,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ================================================================ band */}
-      {/* Sits below the fold and stays lazy, so it costs nothing on first
-          paint. Masked top and bottom so it reads as part of the page rather
-          than a rectangle dropped onto it. */}
-      <section className="relative -mt-4" aria-hidden>
-        {/* 2:1 keeps three quarters of the original height. A thinner strip
-            crops straight through the painting's pale misty centre and loses
-            the children altogether — these are narrative pictures, and they
-            stop reading as anything at letterbox proportions. */}
-        <div className="relative aspect-[16/9] overflow-hidden sm:aspect-[2/1] lg:aspect-[12/5]">
-          <Artwork
-            name="running"
-            rounded={false}
-            sizes="100vw"
-            imgClassName="object-[50%_46%]"
-          />
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to bottom, var(--color-cream-50) 0%, transparent 22%, transparent 74%, var(--color-cream-50) 100%)',
-            }}
-          />
-        </div>
-      </section>
-
       {/* =============================================================== stats */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -244,17 +214,7 @@ export default function Home() {
             />
           </Reveal>
 
-          <div className="mt-11 grid items-start gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="overflow-hidden rounded-3xl border border-night-950/8 stack-shadow">
-              <Artwork
-                name="lunch"
-                rounded={false}
-                sizes="(min-width: 1024px) 34vw, 100vw"
-                className="aspect-[4/3] lg:aspect-[5/6]"
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="mt-11 grid gap-4 sm:grid-cols-3">
             {[
               {
                 icon: <TrophyIcon className="size-6" />,
@@ -290,62 +250,9 @@ export default function Home() {
                 </div>
               </Reveal>
             ))}
-            </div>
           </div>
         </div>
       </section>
-
-      {/* ============================================================= gallery */}
-      {featured.length > 0 ? (
-        <section className="px-4 py-14 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <Reveal>
-              <SectionHeading eyebrow="Past editions" title="Moments from the years before" />
-            </Reveal>
-
-            <div className="mt-11 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-              {featured.map((g) => (
-                <figure
-                  key={g.id}
-                  className="relative aspect-square overflow-hidden rounded-2xl border border-night-950/8 stack-shadow sm:rounded-3xl"
-                >
-                  {g.image_url.startsWith('placeholder:') ? (
-                    <PlaceholderTile seed={g.image_url} label={g.title} className="size-full" />
-                  ) : (
-                    <img
-                      src={g.image_url}
-                      alt={g.title ?? `Utkarsh ${g.year}`}
-                      loading="lazy"
-                      decoding="async"
-                      className="size-full object-cover"
-                    />
-                  )}
-                  <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-night-950/85 to-transparent p-3 pt-8">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-marigold-300">
-                      {g.year}
-                    </p>
-                    {g.title ? (
-                      <p className="mt-0.5 text-[13px] font-bold leading-tight text-white">
-                        {g.title}
-                      </p>
-                    ) : null}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-
-            <div className="mt-8 flex justify-center">
-              <ButtonLink
-                to="/gallery"
-                variant="outline"
-                iconRight={<ArrowRightIcon className="size-4" />}
-              >
-                Open the full gallery
-              </ButtonLink>
-            </div>
-          </div>
-        </section>
-      ) : null}
 
       {/* ================================================================= cta */}
       <section className="px-4 pb-4 sm:px-6 lg:px-8">
