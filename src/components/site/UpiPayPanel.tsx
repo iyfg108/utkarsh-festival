@@ -64,12 +64,19 @@ export function UpiPayPanel({
   const isPhone = platform === 'android' || platform === 'ios'
 
   const vpa = payment.upi_id
-  const uri = upiPayUri({
-    vpa,
-    payeeName: payment.upi_name || 'Utkarsh Heritage Festival',
-    amount,
-    note: `Utkarsh ${regCode}`,
-  })
+  const uri = useMemo(
+    () =>
+      upiPayUri({
+        vpa,
+        payeeName: payment.upi_name || 'Utkarsh Heritage Festival',
+        amount,
+        note: `Utkarsh ${regCode}`,
+      }),
+    // Intentionally stable for the lifetime of this panel — a student should
+    // not find the QR or app link changing under them while they type their UTR.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vpa, payment.upi_name, amount, regCode],
+  )
 
   /**
    * Tapping a UPI link hands the phone to another app. When the student comes

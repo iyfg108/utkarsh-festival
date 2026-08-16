@@ -141,12 +141,24 @@ export function upiPayUri(opts: {
   payeeName: string
   amount: number
   note?: string
+  /** Unique transaction reference — mandatory per NPCI spec. Defaults to a random id. */
+  tr?: string
 }): string {
+  // NPCI spec requires `am` with exactly two decimal places (e.g. "99.00").
+  // Without it, strict apps like PhonePe reject the payment with a misleading
+  // "maximum amount exceeded" error even for small amounts like ₹99.
+  const amFormatted = opts.amount.toFixed(2)
+
+  // `tr` is a mandatory unique transaction reference for merchant payments.
+  // Omitting it causes PhonePe and other PSP apps to reject the intent.
+  const tr = opts.tr ?? `UTK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+
   const params = new URLSearchParams({
     pa: opts.vpa,
     pn: opts.payeeName,
-    am: String(opts.amount),
+    am: amFormatted,
     cu: 'INR',
+    tr,
   })
   if (opts.note) params.set('tn', opts.note)
   // URLSearchParams writes spaces as "+", which is only correct for HTML form

@@ -811,6 +811,14 @@ begin
     raise exception 'This registration is not set up for UPI payment.';
   end if;
 
+  -- Do not silently overwrite a reference the organiser is currently checking.
+  -- If the organiser rejected it (clears upi_reference and resets to 'pending'),
+  -- the student can try again — that is the intended retry path.
+  if v_reg.payment_status = 'awaiting_verification' then
+    raise exception 'You have already submitted reference %. Contact the organisers if you need to change it — they may be checking it right now.',
+      v_reg.upi_reference;
+  end if;
+
   begin
     update registrations
        set upi_reference   = v_ref,
