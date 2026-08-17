@@ -80,6 +80,15 @@ create table if not exists tracks (
   duration_minutes   int,
   mode               event_mode not null default 'onsite',
   event_date         date,
+  -- When the competition actually runs on its day. Two competitions on the
+  -- same date can sit in different slots (art in the morning, bhajan in the
+  -- afternoon), so this belongs to the competition, not to the day.
+  start_time         time,
+  end_time           time,
+  -- Entries close per competition, not for the festival as a whole: the two
+  -- days need different cut-offs so there is time to build each day's running
+  -- order. Null means "use the festival-wide date in settings".
+  registration_closes_at date,
   min_class          int not null default 1,
   max_class          int not null default 10,
   is_team            boolean not null default false,
@@ -118,6 +127,20 @@ create table if not exists selection_items (
   constraint selection_items_not_oversubscribed
     check (taken_count >= 0 and taken_count <= max_slots)
 );
+
+-- `create table if not exists` above is a no-op on a database that already has
+-- the table, so columns added after the first release need saying explicitly.
+do $$ begin
+  alter table tracks add column start_time time;
+exception when duplicate_column then null; end $$;
+
+do $$ begin
+  alter table tracks add column end_time time;
+exception when duplicate_column then null; end $$;
+
+do $$ begin
+  alter table tracks add column registration_closes_at date;
+exception when duplicate_column then null; end $$;
 
 create index if not exists selection_items_track_idx
   on selection_items (track_id) where is_active;
@@ -181,10 +204,11 @@ create table if not exists registrations (
   constraint registrations_school check (length(btrim(school_name)) >= 2),
   constraint registrations_phone
     check (guardian_phone ~ '^[+]?[0-9][0-9 ()-]{7,19}$'),
-  -- We must be able to reach them with a certificate.
+  -- We must be able to reach them. WhatsApp is required and email optional:
+  -- every guardian here has WhatsApp, far from all of them read email, and
+  -- joining details and certificates both go out over it.
   constraint registrations_reachable check (
-    nullif(btrim(coalesce(email, '')), '') is not null
-    or nullif(btrim(coalesce(whatsapp, '')), '') is not null
+    nullif(btrim(coalesce(whatsapp, '')), '') is not null
   ),
   constraint registrations_paid_has_time
     check (payment_status <> 'paid' or paid_at is not null)
@@ -468,33 +492,17 @@ create trigger registration_tracks_validate
   for each row execute function fn_validate_registration_track();
 
 -- ---------------------------------------------------------------------------
--- "Pay at the venue" only makes sense if the student is coming to the venue.
--- Deferred so it is checked once the whole registration is written, not
--- half-way through inserting the entries.
+-- "Pay at the venue needs an at-the-venue competition" — removed.
+--
+-- Every competition is now held at the temple, including the quiz: it is taken
+-- on a device, but on site, so that everyone sits it under the same conditions.
+-- With paying at the temple the only method offered, the old rule could no
+-- longer refuse anything — and if a competition were ever marked `online`
+-- again it would refuse that student's only way to pay, which is a far worse
+-- failure than the one it was guarding against.
 -- ---------------------------------------------------------------------------
-create or replace function fn_validate_payment_method()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare
-  v_onsite int;
-begin
-  if new.payment_method = 'pay_at_venue' and new.payment_status <> 'paid' then
-    select count(*) into v_onsite
-      from registration_tracks rt
-      join tracks t on t.id = rt.track_id
-     where rt.registration_id = new.id and t.mode = 'onsite';
-
-    if v_onsite = 0 then
-      raise exception 'Paying at the venue is only possible if you have entered at least one competition held at the temple. Online-only entries must be paid for online.';
-    end if;
-  end if;
-  return null;
-end $$;
-
 drop trigger if exists registrations_validate_payment on registrations;
-create constraint trigger registrations_validate_payment
-  after insert or update of payment_method on registrations
-  deferrable initially deferred
-  for each row execute function fn_validate_payment_method();
+drop function if exists fn_validate_payment_method();
 
 -- ============================================================================
 --  Auth helpers
@@ -575,6 +583,9 @@ begin
     raise exception 'Registrations are closed at the moment.';
   end if;
 
+  -- `fee` is the price of ONE competition. The total is charged per entry, so
+  -- a student entering three competitions owes three times this. Computed here
+  -- rather than trusted from the browser, for the obvious reason.
   select coalesce((value->>'fee')::int, 99) into v_fee
     from settings where key = 'registration';
   v_fee := coalesce(v_fee, 99);
@@ -597,10 +608,12 @@ begin
     raise exception 'Please choose a class between 1 and 10.';
   end if;
 
+  -- WhatsApp is how the festival actually reaches people: it is required, and
+  -- email is a nice-to-have. It is the guardian's number.
   v_email    := nullif(btrim(lower(payload->>'email')), '');
   v_whatsapp := nullif(btrim(payload->>'whatsapp'), '');
-  if v_email is null and v_whatsapp is null then
-    raise exception 'Please give us either an email address or a WhatsApp number so we can send the certificate.';
+  if v_whatsapp is null then
+    raise exception 'Please give the guardian''s WhatsApp number — that is how we send the joining details and the certificate.';
   end if;
 
   v_method := nullif(payload->>'payment_method', '')::payment_method;
@@ -641,7 +654,8 @@ begin
       v_email,
       v_whatsapp,
       nullif(btrim(payload->>'address'), ''),
-      v_fee,
+      -- Priced per competition entered.
+      v_fee * jsonb_array_length(v_entries),
       v_method,
       coalesce((payload->>'consent_media')::boolean, false),
       v_hold
@@ -670,6 +684,14 @@ begin
     select * into v_track from tracks where id = nullif(v_entry->>'track_id', '')::uuid;
     if not found then
       raise exception 'One of the selected competitions no longer exists.';
+    end if;
+
+    -- Each day closes on its own date. Checked here rather than only in the
+    -- browser, because the form may have been left open past the cut-off.
+    if v_track.registration_closes_at is not null
+       and (now() at time zone 'Asia/Kolkata')::date > v_track.registration_closes_at then
+      raise exception 'Entries for % closed on %.',
+        v_track.name, to_char(v_track.registration_closes_at, 'DD Mon');
     end if;
 
     -- Lock the song row before inserting so concurrent submissions serialise
@@ -733,7 +755,7 @@ begin
     'reg_code',        v_code,
     'registration_id', v_reg_id,
     'full_name',       v_name,
-    'fee_amount',      v_fee,
+    'fee_amount',      v_fee * jsonb_array_length(v_entries),
     'payment_method',  v_method,
     'has_onsite',      v_onsite > 0,
     'hold_expires_at', v_hold
@@ -837,6 +859,11 @@ end $$;
 
 -- Look up your own registration. Needs BOTH the code and the phone number, so
 -- it cannot be used to enumerate participants.
+-- Code AND guardian phone. The code on its own would be a single weak secret,
+-- and anyone who saw it over a student's shoulder could read that
+-- registration; requiring the phone number as well means a leaked code is not
+-- enough on its own. Phone comparison strips non-digits, so spacing and a
+-- leading +91 do not matter.
 create or replace function lookup_registration(p_code text, p_phone text)
 returns jsonb
 language plpgsql security definer set search_path = public as $$

@@ -287,7 +287,7 @@ export default function Status() {
                       <div className="min-w-0">
                         <p className="font-bold text-night-950">{e.track}</p>
                         <p className="text-[12px] text-night-950/55">
-                          {e.mode === 'online' ? 'Online' : 'At the temple'}
+                          At the temple
                           {e.event_date ? ` · ${formatLongDate(e.event_date)}` : ''}
                           {e.selection ? ` · ${e.selection}` : ''}
                         </p>

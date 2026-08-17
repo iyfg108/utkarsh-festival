@@ -11,23 +11,25 @@ certificates — from `/admin`.
 
 ## How the festival works
 
-Five competitions, open to **Class 1 to 10**, across two days. A student may
-enter as many as they like for a single **₹99** registration fee.
+Six competitions, open to **Class 1 to 10**, across two Sundays. Everything
+happens at **ISKCON Guwahati, Ulubari** — including the quiz, which is answered
+on a device but sat on site so that every student attempts it under the same
+conditions, in groups by class (A: 1–4, B: 5–7, C: 8–10).
 
-| Date | Where | Competitions |
-|---|---|---|
-| **23 August** | Online, from home | Vedic Quiz |
-| **30 August** | ISKCON Guwahati, Ulubari | Vedic Art, Vedic Fancy Dress, Devotional Bhajan, Gita Shloka Uchcharan |
+| Date | Time | Competitions | Entries close |
+|---|---|---|---|
+| **23 August** | 9–11 am | Vedic Quiz, Gita Shloka Recitation, Devotional Essay | 22 August |
+| **30 August** | 9 am–12 noon | Vedic Art, Vedic Fancy Dress | 28 August |
+| **30 August** | 4–6 pm | Devotional Bhajan | 28 August |
+
+A student may enter as many as they like, at **₹99 per competition** — three
+competitions is ₹297. There is no online payment: the fee is cash at the temple
+on the day, and the total is computed server-side from the entries.
 
 Everyone gets a certificate. Prizes and prasadam are given at the temple on
 30 August; anyone who cannot collect their certificate in person receives a
-digital copy by email or WhatsApp.
-
-**Paying:** by UPI at registration (or card/net banking if Razorpay is switched
-on). If a student has entered **at least one** competition held at the temple,
-they may instead pay ₹99 in cash on the day. If every competition they chose is
-online there is no venue to pay at, so the fee must be paid online — a rule
-enforced by the database, not just the form.
+digital copy on the guardian's WhatsApp number, which is required at
+registration (email is optional).
 
 ---
 
@@ -70,7 +72,7 @@ Run these in the Supabase **SQL editor**, in order:
 |---|---|
 | `supabase/reset.sql` | Drops the old schema. **Deletes all registrations.** Backs up organiser logins first. |
 | `supabase/schema.sql` | Tables, constraints, row-level security, functions. Restores organiser logins. |
-| `supabase/seed.sql` | The five competitions, the bhajan song list, settings. |
+| `supabase/seed.sql` | The six competitions, the bhajan song list, settings. |
 | `supabase/patches.sql` | Updates settings on an *already seeded* database (seed.sql never overwrites them). |
 
 `schema.sql` and `seed.sql` are safe to re-run. `reset.sql` is not — it is
@@ -79,11 +81,12 @@ destructive by design, and only needed when rebuilding from an older version.
 Verify afterwards:
 
 ```sql
-select name, sanskrit_name, mode, event_date, requires_selection from tracks order by sort_order;
+select name, event_date, start_time, end_time, registration_closes_at, requires_selection
+  from tracks order by event_date, start_time, sort_order;
 ```
 
-You should get five rows, with `requires_selection` true only on Devotional
-Bhajan.
+You should get six rows, all with times and cut-offs, and `requires_selection`
+true only on Devotional Bhajan.
 
 ---
 
@@ -122,19 +125,15 @@ A `null` role means step 2 did not land.
 
 ## Payments
 
-The fee can be collected two ways, and both can run at once. Which methods
-students see is controlled from **Admin → Settings → How students pay**.
+**For 2026 the only method is cash at the temple**, at ₹99 per competition.
+Nothing is collected online, so there is no gateway to set up and no UPI ID to
+get right. Collect it at the desk from **Admin → Day sheet**, which shows each
+student's total and the cash you should have at the end.
 
-**UPI (default, no gateway).** Student pays to your UPI ID via QR or a
-tap-to-pay link, then reports the UTR reference. An organiser confirms it
-against the bank statement in **Admin → Verify payments**. No KYC, no fees,
-works immediately. The database refuses to let two students claim the same
-reference, and a payment awaiting verification is never billed again at the
-desk.
-
-Set your UPI ID in Admin → Settings before opening registration — it ships
-blank on purpose, and the site says "UPI is not set up yet" rather than
-guessing an account.
+The UPI and Razorpay flows are still in the code and switched off in
+**Admin → Settings → How students pay**. Turning one back on is a toggle, not a
+rebuild — but set a real UPI ID first; it ships blank on purpose so the site
+says "UPI is not set up yet" rather than sending money to a guessed account.
 
 **Razorpay (optional).** Adds cards and net banking with automatic
 verification. Needs KYC. See **[supabase/PAYMENTS.md](supabase/PAYMENTS.md)**
@@ -166,11 +165,24 @@ account — a judge does not see these screens in the nav.
 |---|---|
 | Phone, email, WhatsApp, Instagram | **Admin → Settings → Contact details** |
 | The devotional song list, and how many students may sing each one | **Admin → Bhajan songs** |
-| Fee, whether registration is open, the two dates, venue | **Admin → Settings** |
+| Fee **per competition**, whether registration is open, the two dates, venue | **Admin → Settings** |
 | UPI ID, payee name, which payment methods are offered | **Admin → Settings → How students pay** |
 
 The contact details feed the footer, the contact page and the payment reminder
 messages. The song list feeds the bhajan step of the registration form.
+
+Two things are set per competition and are **not** in Settings, because they
+differ between the two days — they live on the competition row in the database
+(`tracks.start_time` / `end_time`, and `tracks.registration_closes_at`):
+
+- **When it runs.** 23 August is 9–11 am; 30 August is 9 am–12 noon for art and
+  fancy dress, and 4–6 pm for bhajan.
+- **When entries close.** 22 August for the first day, 28 August for the second.
+  `submit_registration` refuses a late entry, so a form left open past the
+  cut-off cannot sneak one through.
+
+The fee is charged **per competition entered**. A student entering three owes
+₹297, worked out server-side from the number of entries.
 
 Two guards on the song list are worth knowing, because both surface as a
 refusal rather than silent data loss:

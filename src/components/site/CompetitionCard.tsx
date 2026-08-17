@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom'
-import { accent, cn, formatDate } from '@/lib/utils'
+import { accent, cn, formatDate, formatTimeRange } from '@/lib/utils'
 import type { Track } from '@/lib/types'
 import { TrackIcon, ArrowRightIcon } from '@/components/Icons'
 
 export function CompetitionCard({ track, className }: { track: Track; className?: string }) {
   const a = accent(track.accent)
-  const online = track.mode === 'online'
+  const slot = formatTimeRange(track.start_time, track.end_time)
 
   return (
     <Link
@@ -20,16 +20,13 @@ export function CompetitionCard({ track, className }: { track: Track; className?
           <TrackIcon name={track.icon} className="size-6" />
         </span>
 
-        <span
-          className={cn(
-            'rounded-full border px-2.5 py-1 text-[11px] font-bold',
-            online
-              ? 'border-peacock-200 bg-peacock-50 text-peacock-800'
-              : 'border-marigold-200 bg-marigold-50 text-marigold-800',
-          )}
-        >
-          {online ? 'Online' : 'At the temple'}
-        </span>
+{/* The time slot, not the mode — everything is at the temple now, so
+            "where" is not the useful thing to show; "when" is. */}
+        {slot ? (
+          <span className="rounded-full border border-marigold-200 bg-marigold-50 px-2.5 py-1 text-[11px] font-bold text-marigold-800">
+            {slot}
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-4 flex-1">

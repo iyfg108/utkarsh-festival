@@ -9,46 +9,88 @@
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
--- The five competitions
---   23 August — online:  Vedic Quiz, Gita Shloka Uchcharan
---   30 August — onsite:  Vedic Art, Vedic Fancy Dress, Devotional Bhajan
---                        (ISKCON Ulubari, Guwahati)
+-- The six competitions. Everything happens at ISKCON Ulubari, Guwahati.
+--
+--   23 August, 9–11 am    Vedic Quiz · Gita Shloka Recitation · Devotional Essay
+--   30 August, 9 am–12 pm Vedic Art · Vedic Fancy Dress
+--   30 August, 4–6 pm     Devotional Bhajan
+--
+-- Note every competition is `onsite`, the quiz included. It is answered on a
+-- device, but at the temple, so no one can sit it with help at home. Entries
+-- close per day (22 August and 28 August), not festival-wide.
 -- ---------------------------------------------------------------------------
 insert into tracks (
   slug, name, sanskrit_name, tagline, description, icon, accent,
   rules, what_to_bring, duration_minutes, mode, event_date,
+  start_time, end_time, registration_closes_at,
   min_class, max_class, is_team, min_team_size, max_team_size,
   requires_selection, selection_label, selection_help, sort_order
 ) values
   (
     'vedic-quiz', 'Vedic Quiz', 'Jnana Yajna',
     'How well do you know your roots?',
-    'An online quiz on the Bhagavad-gita, the Ramayana and Mahabharata, the Puranas, and the culture and heritage of Bharat. Multiple choice, open book strictly not allowed.',
+    'A quiz on the Bhagavad-gita, the Ramayana and Mahabharata, the Puranas, and the culture and heritage of Bharat. Answered on a device at the temple, so every student sits it under the same conditions.',
     'brain', 'teal',
     array[
-      'Held online on 23 August. The link is sent to your email or WhatsApp a day before.',
+      'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
+      'The quiz is answered on a device, but you attempt it at the temple — that way nobody has an unfair advantage at home.',
+      'You sit with your group, and each group gets its own set of questions: Group A is Class 1–4, Group B is Class 5–7, Group C is Class 8–10.',
       'Individual participation. No phones, notes or help from others.',
-      'You get one attempt, within the time window announced.',
-      'A stable internet connection is your responsibility — try to be ready 10 minutes early.'
+      'Come 15 minutes early so we can seat your group together.'
     ],
-    array['A phone, tablet or computer', 'A quiet 30 minutes'],
-    30, 'online', '2026-08-23',
+    array['Nothing — devices are provided at the temple'],
+    30, 'onsite', '2026-08-23',
+    '09:00', '11:00', '2026-08-22',
     1, 10, false, 1, 1, false, null, null, 1
+  ),
+  (
+    'gita-shloka', 'Gita Shloka Recitation', 'Shloka Uchcharana',
+    'Ancient verses, young voices.',
+    'Recite verses from the Bhagavad-gita from memory. Judged on pronunciation, rhythm, memory and the feeling you bring to the verse.',
+    'scroll', 'gold',
+    array[
+      'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
+      'Recite from memory — no reading from a book or phone.',
+      'Sanskrit pronunciation carries the most weight in scoring.',
+      'You may be asked the meaning of a verse in one or two lines.'
+    ],
+    array['Nothing — just your memory and your voice'],
+    4, 'onsite', '2026-08-23',
+    '09:00', '11:00', '2026-08-22',
+    1, 10, false, 1, 1, false, null, null, 2
+  ),
+  (
+    'devotional-essay', 'Devotional Essay', 'Lekhana',
+    'Say it in your own words.',
+    'A written essay on a devotional theme, handwritten at the temple. The topic is announced on the spot, so nothing can be prepared in advance and every student starts equal. Judged on thought, clarity and honesty rather than long words.',
+    'scroll', 'indigo',
+    array[
+      'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
+      'The topic is announced on the spot.',
+      'Handwritten. Paper is provided — bring your own pen.',
+      'Write in English, Hindi or Assamese, whichever you think in.',
+      'Your own words only. No printed material, no phones, no help from adults.'
+    ],
+    array['A pen you are comfortable writing with'],
+    60, 'onsite', '2026-08-23',
+    '09:00', '11:00', '2026-08-22',
+    1, 10, false, 1, 1, false, null, null, 3
   ),
   (
     'vedic-art', 'Vedic Art', 'Chitrakala',
     'Let your colours tell the story.',
-    'Bring the pastimes of Krishna, the beauty of our temples and the spirit of our heritage onto paper. Held at the temple on 30 August.',
+    'Bring the pastimes of Krishna, the beauty of our temples and the spirit of our heritage onto paper.',
     'palette', 'saffron',
     array[
-      'Held at ISKCON Ulubari on 30 August.',
+      'Held at ISKCON Ulubari on 30 August, 9 am to 12 noon.',
       'The theme is announced on the spot, so every artist starts equal.',
       'Drawing sheet is provided. Bring your own colours.',
       'No tracing, no printed references, no help from adults.'
     ],
     array['Colours of your choice', 'Brushes, palette and a water jar', 'Pencil and eraser', 'A drawing board'],
     90, 'onsite', '2026-08-30',
-    1, 10, false, 1, 1, false, null, null, 2
+    '09:00', '12:00', '2026-08-28',
+    1, 10, false, 1, 1, false, null, null, 4
   ),
   (
     'vedic-fancy-dress', 'Vedic Fancy Dress', 'Vesha Bhusha',
@@ -56,14 +98,15 @@ insert into tracks (
     'Dress as a personality from our scriptures and speak a few lines in their voice. Judged on costume, confidence and how well you carry the character — not on how expensive the outfit is.',
     'mask', 'magenta',
     array[
-      'Held at ISKCON Ulubari on 30 August.',
+      'Held at ISKCON Ulubari on 30 August, 9 am to 12 noon.',
       'Speak 4 to 6 lines introducing yourself as that character.',
       'Costume is arranged by the participant.',
       'No live animals, no sharp props, no open flame.'
     ],
     array['Your costume and props', 'A backing track on a pen drive (optional)'],
     5, 'onsite', '2026-08-30',
-    1, 10, false, 1, 1, false, null, null, 3
+    '09:00', '12:00', '2026-08-28',
+    1, 10, false, 1, 1, false, null, null, 5
   ),
   (
     'devotional-bhajan', 'Devotional Bhajan', 'Bhajan & Kirtan',
@@ -71,7 +114,7 @@ insert into tracks (
     'A bhajan or kirtan of your choosing, sung solo. Harmonium, tabla, kartals or a simple track — or nothing at all. Judged on melody, clarity of words, rhythm and devotion.',
     'music', 'peacock',
     array[
-      'Held at ISKCON Ulubari on 30 August.',
+      'Held at ISKCON Ulubari on 30 August, 4 pm to 6 pm.',
       'Solo performance only.',
       'Choose your song while registering — at most 3 students may sing the same one.',
       'You may bring your own instrument or accompanist.',
@@ -79,27 +122,11 @@ insert into tracks (
     ],
     array['Your instrument, if you play one', 'A pen drive with your track (optional)'],
     5, 'onsite', '2026-08-30',
+    '16:00', '18:00', '2026-08-28',
     1, 10, false, 1, 1,
     true, 'Song',
     'At most 3 students may sing the same song, so the evening stays varied. Songs already taken are marked — pick another and you will stand out more anyway.',
-    4
-  ),
-  (
-    'gita-shloka', 'Gita Shloka Uchcharan', 'Shloka Uchcharana',
-    'Ancient verses, young voices.',
-    'Recite verses from the Bhagavad-gita from memory. Judged on pronunciation, rhythm, memory and the feeling you bring to the verse.',
-    'scroll', 'gold',
-    array[
-      'Held online on 23 August, 4 pm to 6 pm.',
-      'Recite from memory — no reading from a book or phone.',
-      'The joining link is sent to your email or WhatsApp a day before.',
-      'Class 1–5: any two verses. Class 6–10: any four verses.',
-      'Sanskrit pronunciation carries the most weight in scoring.',
-      'You may be asked the meaning of a verse in one or two lines.'
-    ],
-    array['Nothing — just your memory and your voice'],
-    4, 'online', '2026-08-23',
-    1, 10, false, 1, 1, false, null, null, 5
+    6
   )
 on conflict (slug) do update
   set name = excluded.name,
@@ -113,11 +140,15 @@ on conflict (slug) do update
       duration_minutes = excluded.duration_minutes,
       mode = excluded.mode,
       event_date = excluded.event_date,
+      start_time = excluded.start_time,
+      end_time = excluded.end_time,
+      registration_closes_at = excluded.registration_closes_at,
       min_class = excluded.min_class,
       max_class = excluded.max_class,
       requires_selection = excluded.requires_selection,
       selection_label = excluded.selection_label,
       selection_help = excluded.selection_help,
+      is_active = true,
       sort_order = excluded.sort_order;
 
 -- ---------------------------------------------------------------------------
@@ -131,7 +162,6 @@ select t.id, v.title, v.subtitle, v.cap, v.ord
     ('Jaya Radha Madhava',              'Bhaktivinoda Thakura',                       3, 2),
     ('Govinda Jaya Jaya',               'Traditional',                                3, 3),
     ('Sri Krishna Caitanya',            'Panca-tattva kirtan',                        3, 4),
-    ('Damodarastakam',                  'namamisvaram sac-cid-ananda-rupam',          3, 5),
     ('Madhurastakam',                   'adharam madhuram — Vallabhacharya',          3, 6),
     ('Achyutam Keshavam',               'Traditional bhajan',                         3, 7),
     ('Yashomati Nandana',               'Bhaktivinoda Thakura',                       3, 8),
@@ -140,13 +170,15 @@ select t.id, v.title, v.subtitle, v.cap, v.ord
     ('Gopinath',                        'Bhaktivinoda Thakura',                       3, 11),
     ('Hari Haraye Namah Krishna',       'Traditional kirtan',                         3, 12),
     ('Shri Krishna Govind Hare Murari', 'Traditional',                                3, 13),
-    ('Jai Jagadish Hare',               'Aarti',                                      3, 14),
     ('Radhe Radhe Govind',              'Traditional',                                3, 15),
     ('Bhaja Govindam',                  'Adi Shankaracharya',                         3, 16),
     ('Payoji Maine Ram Ratan Dhan',     'Meerabai',                                   3, 17),
-    ('Sri Gurvastakam',                 'samsara-davanala — Visvanatha Cakravarti',   3, 18),
     ('Jaya Jaya Devaki Nandana',        'Traditional',                                3, 19),
-    ('Bhajahu Re Mana',                 'Govinda Dasa Kaviraja',                      3, 20)
+    ('Bhajahu Re Mana',                 'Govinda Dasa Kaviraja',                      3, 20),
+    ('Maiya Mori Main Nahin Makhan Khayo', 'Surdas',                                   3, 21),
+    ('Shri Ramachandra Kripalu Bhaja Man', 'Tulsidas',                                 3, 22),
+    ('Mangal Bhavan Amangal Hari',         'Tulsidas — Ramcharitmanas',                3, 23),
+    ('Thumak Chalat Ramachandra',          'Tulsidas — baajat painjaniya',             3, 24)
   ) as v(title, subtitle, cap, ord)
  where t.slug = 'devotional-bhajan'
    and not exists (
@@ -170,11 +202,15 @@ insert into settings (key, value, is_public) values
     'registration',
     jsonb_build_object(
       'open', true,
+      -- The price of ONE competition. A student entering three owes 3 x this;
+      -- submit_registration multiplies by the number of entries.
       'fee', 99,
-      'closes_at', '2026-08-21',
-      -- How long an unpaid registration holds its bhajan song slot before it
-      -- is released for someone else. Generous: a UPI payment takes 2 minutes,
-      -- but a child may need to find a parent first.
+      -- Latest of the per-competition cut-offs, shown as the headline date.
+      -- The real enforcement is tracks.registration_closes_at, per day.
+      'closes_at', '2026-08-28',
+      -- Song slots are no longer held against payment — everyone pays cash at
+      -- the temple, so a registration is final the moment it is submitted.
+      -- Kept for the fallback path in release_expired_holds().
       'hold_minutes', 60
     ),
     true
@@ -204,8 +240,11 @@ insert into settings (key, value, is_public) values
       -- instead, which is a visible failure you will notice immediately.
       'upi_id', '',
       'upi_name', 'ISKCON Guwahati',
+      -- Cash at the temple is the only method offered for 2026. The UPI and
+      -- Razorpay code paths are intact and dormant; switching either back on
+      -- from Admin -> Settings is all it takes, no rebuild.
       'methods', jsonb_build_object(
-        'upi_manual', true,
+        'upi_manual', false,
         'pay_at_venue', true,
         'razorpay', false
       )
@@ -216,8 +255,8 @@ insert into settings (key, value, is_public) values
     'contact',
     jsonb_build_object(
       'email', 'iyfguwahati@gmail.com',
-      'phone', '+91 87610 13927',
-      'whatsapp', '+91 87610 13927',
+      'phone', '+91 93950 40843',
+      'whatsapp', '+91 93950 40843',
       'instagram', ''
     ),
     true

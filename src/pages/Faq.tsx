@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { useFestival } from '@/context/FestivalContext'
-import { cn, formatLongDate, formatMoney } from '@/lib/utils'
+import { cn, formatLongDate, formatMoney, formatTimeRange } from '@/lib/utils'
 import { PageHeader } from '@/components/site/PageHeader'
 import { Reveal } from '@/components/ui/Primitives'
 import { ButtonLink } from '@/components/ui/Button'
 import { ChevronDownIcon } from '@/components/Icons'
 
 export default function Faq() {
-  const { settings, tracks, onlineTracks, onsiteTracks } = useFestival()
+  const { settings, tracks, daySlots } = useFestival()
   const event = settings?.event
   const fee = settings?.registration.fee ?? 99
 
-  const onlineDate = event?.online_date ? formatLongDate(event.online_date) : '23 August'
   const onsiteDate = event?.onsite_date ? formatLongDate(event.onsite_date) : '30 August'
   const venue = event?.venue ?? 'ISKCON Guwahati, Ulubari'
 
@@ -22,17 +21,24 @@ export default function Faq() {
     },
     {
       q: 'What does it cost?',
-      a: `${formatMoney(fee)} in total, however many competitions you enter. One student, one fee — whether you enter one competition or all ${tracks.length}.`,
+      a: `${formatMoney(fee)} for each competition you enter. So one competition is ${formatMoney(fee)}, three is ${formatMoney(fee * 3)}, and all ${tracks.length} is ${formatMoney(fee * tracks.length)}. Nothing to pay online — you bring the cash to the temple on the day.`,
     },
     {
       q: 'When and where does it happen?',
       a: (
         <>
-          Two days. <strong>{onlineDate}</strong> is the online day —{' '}
-          {onlineTracks.map((t) => t.name).join(' and ') || 'the Vedic Quiz'} — which you take part
-          in from home. <strong>{onsiteDate}</strong> is the day at {venue}, where{' '}
-          {onsiteTracks.map((t) => t.name).join(', ') || 'the remaining competitions'} are held in
-          person.
+          Everything happens at <strong>{venue}</strong>, across two Sundays:
+          <ul className="mt-2 space-y-1">
+            {daySlots.map((slot) => (
+              <li key={`${slot.date}-${slot.start ?? ''}`}>
+                <strong>{formatLongDate(slot.date)}</strong>
+                {formatTimeRange(slot.start, slot.end)
+                  ? `, ${formatTimeRange(slot.start, slot.end)}`
+                  : ''}{' '}
+                — {slot.tracks.map((t) => t.name).join(', ')}
+              </li>
+            ))}
+          </ul>
         </>
       ),
     },
@@ -40,17 +46,15 @@ export default function Faq() {
       q: 'How do I pay?',
       a: (
         <>
-          By UPI when you register — scan the QR or tap through to GPay, PhonePe or Paytm, then
-          enter the reference number so we can match your payment. If you have entered at least one
-          competition held at the temple, you may instead choose to pay {formatMoney(fee)} in cash
-          at the venue on {onsiteDate}. If all your competitions are online there is no venue to pay
-          at, so the fee has to be paid online.
+          In cash at {venue}, on the day of your first competition. There is nothing to pay while
+          registering and no online payment at all — fill in the form, note your registration code,
+          and bring the total with you. The form tells you what that total is before you submit.
         </>
       ),
     },
     {
       q: 'Can I enter more than one competition?',
-      a: `Yes — enter as many as you like, including all ${tracks.length}. The fee does not change. Just check that the timings on the day work for you.`,
+      a: `Yes — enter as many as you like, including all ${tracks.length}. Each one is ${formatMoney(fee)}. Just check that the timings work for you: some competitions run in the same slot, so you cannot be in both.`,
     },
     {
       q: 'Why does it say a song is "full"?',
@@ -61,14 +65,14 @@ export default function Faq() {
       a: (
         <>
           Every participant gets one. Collect it in person at {venue} on {onsiteDate}, along with
-          your prizes and prasadam. If you cannot come, we send a digital copy to the email address
-          or WhatsApp number on your registration — which is why one of those is required.
+          your prizes and prasadam. If you cannot come, we send a digital copy to the guardian's
+          WhatsApp number on your registration — which is why that number is required.
         </>
       ),
     },
     {
-      q: 'I entered only the online competitions. Can I still come to the temple?',
-      a: `Absolutely, and we would love you to. Come on ${onsiteDate} to collect your certificate, take prasadam and watch the other competitions. If you cannot make it, your certificate reaches you online.`,
+      q: 'The quiz is on a computer — can I do it from home?',
+      a: `No. The quiz is answered on a device, but you sit it at ${venue} with your group, so that everyone attempts it under the same conditions and nobody can be helped from the next room. Devices are provided; just come on time.`,
     },
     {
       q: 'What if I need to change my song or add a competition?',

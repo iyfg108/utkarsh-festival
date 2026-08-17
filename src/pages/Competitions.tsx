@@ -19,7 +19,7 @@ export default function Competitions() {
             Five ways to <span className="text-gradient-festival">take part</span>
           </>
         }
-        subtitle="Open to Class 1 to 10. Enter as many as you like — one registration covers all of them."
+        subtitle="Open to Class 1 to 10. Enter as many as you like — ₹99 for each one."
       />
 
       <section className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
@@ -47,7 +47,7 @@ export default function Competitions() {
           <div>
             <DayHeading
               date={event?.onsite_date}
-              badge="At the temple"
+              badge="ISKCON Ulubari"
               tone="marigold"
               note={`Held at ${event?.venue ?? 'ISKCON Ulubari'} — come in person for the day.`}
             />
@@ -69,7 +69,7 @@ export default function Competitions() {
               Found the ones you want?
             </h2>
             <p className="max-w-md text-[15px] text-night-950/65">
-              One registration covers as many competitions as you like.
+              ₹99 for each competition you enter.
             </p>
             <ButtonLink
               to="/register"

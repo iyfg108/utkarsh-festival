@@ -1,13 +1,19 @@
 -- ============================================================================
---  One-off patches for a database that has ALREADY been seeded (v2).
+--  UTKARSH 2026 — bring an already-seeded database up to the August revision.
 --
---  seed.sql uses `on conflict do nothing` on `settings`, so re-running it never
---  clobbers edits you made from the admin portal. That also means seed.sql
---  cannot change those rows once they exist. This file changes them explicitly.
+--  Run in the Supabase SQL editor, in this order:
+--      1. schema.sql   — adds the new columns, replaces the functions
+--      2. seed.sql     — upserts the six competitions and the song list
+--      3. patches.sql  — this file
 --
---  Safe to re-run. Run it in the Supabase SQL editor.
---  Everything here is also editable from Admin → Settings.
+--  seed.sql uses `on conflict (key) do nothing` on `settings`, so it can never
+--  clobber something you changed from the admin portal — which also means it
+--  cannot update those rows once they exist. That is this file's job, along
+--  with the data migrations no seed can do.
+--
+--  Safe to re-run.
 -- ============================================================================
+
 
 -- ---------------------------------------------------------------------------
 -- 1. Contact details
@@ -15,17 +21,19 @@
 update settings
    set value = jsonb_build_object(
          'email',     'iyfguwahati@gmail.com',
-         'phone',     '+91 87610 13927',
-         'whatsapp',  '+91 87610 13927',
+         'phone',     '+91 93950 40843',
+         'whatsapp',  '+91 93950 40843',
          'instagram', ''
        ),
        updated_at = now()
  where key = 'contact';
 
+
 -- ---------------------------------------------------------------------------
--- 2. Event dates and venue
---    23 August — online (Vedic Quiz, Vedic Essay)
---    30 August — at the temple (Art, Fancy Dress, Bhajan, Shloka)
+-- 2. The two days. Both are at the temple now — the quiz included, since it is
+--    answered on a device but sat on site so that nobody can take it with help
+--    at home. The `online_date` / `onsite_date` keys keep their names so
+--    nothing else has to change; read them as "first day" and "second day".
 -- ---------------------------------------------------------------------------
 update settings
    set value = jsonb_build_object(
@@ -39,36 +47,55 @@ update settings
        updated_at = now()
  where key = 'event';
 
+
 -- ---------------------------------------------------------------------------
--- 3. Registration window and fee
+-- 3. Registration window and fee.
+--
+--    `fee` is now the price of ONE competition. submit_registration multiplies
+--    it by the number of entries, so a student entering three owes 297.
+--
+--    `closes_at` is only the headline date shown to students. The real cut-off
+--    is per competition, in tracks.registration_closes_at (section 4), because
+--    the two days close on different dates.
 -- ---------------------------------------------------------------------------
 update settings
    set value = jsonb_build_object(
          'open',         true,
          'fee',          99,
-         'closes_at',    '2026-08-21',
+         'closes_at',    '2026-08-28',
          'hold_minutes', 60
        ),
        updated_at = now()
  where key = 'registration';
 
+
 -- ---------------------------------------------------------------------------
--- 4. Payment methods and the UPI account money goes to
+-- 4. Per-competition entry deadlines.
 --
---    ⚠️  REPLACE THE upi_id BELOW WITH YOUR REAL ONE, and send yourself ₹1 to
---        confirm it before opening registration. This is the single value in
---        the whole project where a typo costs actual money.
+--    seed.sql sets these too; repeated here so a database that is seeded but
+--    not re-seeded still gets them.
+-- ---------------------------------------------------------------------------
+update tracks set registration_closes_at = '2026-08-22'
+ where event_date = '2026-08-23';
+
+update tracks set registration_closes_at = '2026-08-28'
+ where event_date = '2026-08-30';
+
+
+-- ---------------------------------------------------------------------------
+-- 5. Payment: cash at the temple, and nothing else.
 --
---    Switch 'razorpay' to true only once the Edge Functions are deployed
---    (see PAYMENTS.md) — otherwise students hit a broken checkout.
+--    The UPI and Razorpay code paths are intact but dormant. Switching either
+--    back on is a toggle in Admin → Settings, not a rebuild — but do not turn
+--    UPI on without setting a real upi_id first.
 -- ---------------------------------------------------------------------------
 insert into settings (key, value, is_public) values (
   'payment',
   jsonb_build_object(
-    'upi_id',   'REPLACE-ME@bank',
+    'upi_id',   '',
     'upi_name', 'ISKCON Guwahati',
     'methods',  jsonb_build_object(
-      'upi_manual',   true,
+      'upi_manual',   false,
       'pay_at_venue', true,
       'razorpay',     false
     )
@@ -78,100 +105,158 @@ insert into settings (key, value, is_public) values (
 on conflict (key) do update
   set value = excluded.value, updated_at = now();
 
--- ---------------------------------------------------------------------------
--- 5. Sanskrit names without combining diacritics
---    The display font (and many phone fonts) has no glyph for a / s / n / s
---    with macrons and dots, so "Chitrakala" rendered with a stray bar above.
---    Plain transliteration renders correctly everywhere, including on budget
---    Android devices. seed.sql now carries these values too — this is here so
---    an already-seeded database picks them up without a full re-seed.
--- ---------------------------------------------------------------------------
-update tracks set sanskrit_name = 'Jnana Yajna'       where slug = 'vedic-quiz';
-update tracks set sanskrit_name = 'Nibandha'          where slug = 'vedic-essay';
-update tracks set sanskrit_name = 'Chitrakala'        where slug = 'vedic-art';
-update tracks set sanskrit_name = 'Vesha Bhusha'      where slug = 'vedic-fancy-dress';
-update tracks set sanskrit_name = 'Bhajan & Kirtan'   where slug = 'devotional-bhajan';
-update tracks set sanskrit_name = 'Shloka Uchcharana' where slug = 'gita-shloka';
 
 -- ---------------------------------------------------------------------------
--- 6. Remove the Vedic Essay competition
+-- 6. Songs withdrawn from the bhajan list.
 --
---    Deletes it outright if nobody has entered. If students HAVE entered, a
---    delete would be refused by the foreign key (and would be wrong — it would
---    throw away their entries), so it is deactivated instead: hidden from the
---    site, existing entries preserved, and you can still see them in the admin
---    portal to contact those students.
+--    Deleted outright only where nobody has chosen them. Where a student has,
+--    the foreign key would refuse the delete — and should: it would throw away
+--    their entry. Those are deactivated instead, which hides the song from new
+--    registrations while leaving the existing singer untouched.
 -- ---------------------------------------------------------------------------
 do $$
-declare v_n int;
+declare
+  r record;
+  v_n int;
 begin
-  select count(*) into v_n
-    from registration_tracks rt
-    join tracks t on t.id = rt.track_id
-   where t.slug = 'vedic-essay';
+  for r in
+    select id, title from selection_items
+     where title in ('Damodarastakam', 'Sri Gurvastakam', 'Jai Jagadish Hare')
+  loop
+    select count(*) into v_n
+      from registration_tracks where selection_item_id = r.id;
 
-  if v_n = 0 then
-    delete from tracks where slug = 'vedic-essay';
-    raise notice 'Vedic Essay removed — nobody had entered it.';
-  else
-    update tracks set is_active = false where slug = 'vedic-essay';
-    raise notice '% student(s) had already entered Vedic Essay. It is now hidden from the site, but their entries are kept — contact them before the day.', v_n;
+    if v_n = 0 then
+      delete from selection_items where id = r.id;
+      raise notice 'Removed "%" — nobody had chosen it.', r.title;
+    else
+      update selection_items set is_active = false where id = r.id;
+      raise notice '"%" is kept but hidden: % student(s) already chose it.', r.title, v_n;
+    end if;
+  end loop;
+end $$;
+
+
+-- ---------------------------------------------------------------------------
+-- 6b. Songs added to the bhajan list.
+--
+--     seed.sql adds these too; repeated here so an already-seeded database
+--     picks them up without a re-seed. Skips any that are already present, so
+--     re-running never creates a duplicate.
+--
+--     Note "payo ji main ram ratan dhan payo" is not in this list: it is the
+--     Meerabai bhajan already seeded as "Payoji Maine Ram Ratan Dhan".
+-- ---------------------------------------------------------------------------
+insert into selection_items (track_id, title, subtitle, max_slots, sort_order)
+select t.id, v.title, v.subtitle, v.cap, v.ord
+  from tracks t
+  cross join (values
+    ('Maiya Mori Main Nahin Makhan Khayo', 'Surdas',                        3, 21),
+    ('Shri Ramachandra Kripalu Bhaja Man', 'Tulsidas',                      3, 22),
+    ('Mangal Bhavan Amangal Hari',         'Tulsidas — Ramcharitmanas',     3, 23),
+    ('Thumak Chalat Ramachandra',          'Tulsidas — baajat painjaniya',  3, 24)
+  ) as v(title, subtitle, cap, ord)
+ where t.slug = 'devotional-bhajan'
+   and not exists (
+     select 1 from selection_items si where si.track_id = t.id and si.title = v.title
+   );
+
+
+-- ---------------------------------------------------------------------------
+-- 7. Re-price existing registrations at 99 per competition.
+--
+--    Anyone already marked paid is left alone and reported instead: silently
+--    raising what a paid student owes would turn them into a debtor in the day
+--    sheet through no fault of their own. Decide those by hand.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_fee  int;
+  v_paid int;
+  v_upd  int;
+begin
+  select coalesce((value->>'fee')::int, 99) into v_fee
+    from settings where key = 'registration';
+
+  update registrations r
+     set fee_amount = v_fee * greatest(
+           (select count(*) from registration_tracks rt where rt.registration_id = r.id), 1),
+         updated_at = now()
+   where r.payment_status <> 'paid';
+  get diagnostics v_upd = row_count;
+
+  select count(*) into v_paid from registrations where payment_status = 'paid';
+
+  raise notice 'Re-priced % unpaid registration(s) at % per competition.', v_upd, v_fee;
+  if v_paid > 0 then
+    raise notice '% registration(s) are already marked paid and were NOT re-priced — check them by hand.', v_paid;
   end if;
 end $$;
 
--- Close the gap the essay left in the running order.
-update tracks set sort_order = 2 where slug = 'vedic-art';
-update tracks set sort_order = 3 where slug = 'vedic-fancy-dress';
-update tracks set sort_order = 4 where slug = 'devotional-bhajan';
-update tracks set sort_order = 5 where slug = 'gita-shloka';
 
 -- ---------------------------------------------------------------------------
--- 7. Gita Shloka Uchcharan runs ONLINE on 23 August, not at the temple on the
---    30th. The printed poster is the published truth here and it is already
---    out with the QR code on it, so the database follows the poster.
+-- 8. Everyone pays at the temple now, so move unpaid registrations off UPI.
+--    Their reported UPI references are cleared with them; nothing was taken.
+-- ---------------------------------------------------------------------------
+update registrations
+   set payment_method  = 'pay_at_venue',
+       payment_status  = 'pending',
+       upi_reference   = null,
+       hold_expires_at = null,
+       updated_at      = now()
+ where payment_status <> 'paid'
+   and (payment_method is distinct from 'pay_at_venue' or hold_expires_at is not null);
+
+
+-- ---------------------------------------------------------------------------
+-- 9. Guardian WhatsApp is now required, email optional.
 --
---    Knock-on: a student entering only Quiz and Shloka is now online-only, so
---    the "pay cash at the temple" option correctly disappears for them.
+--    Added NOT VALID on purpose: it applies to every new registration from now
+--    on, but does not retroactively reject rows written under the old rule,
+--    which would make the table unwritable until they were fixed. The query at
+--    the end lists any that need a number filled in by hand.
 -- ---------------------------------------------------------------------------
-update tracks
-   set mode = 'online',
-       event_date = '2026-08-23',
-       rules = array[
-         'Held online on 23 August, 4 pm to 6 pm.',
-         'Recite from memory — no reading from a book or phone.',
-         'The joining link is sent to your email or WhatsApp a day before.',
-         'Class 1–5: any two verses. Class 6–10: any four verses.',
-         'Sanskrit pronunciation carries the most weight in scoring.',
-         'You may be asked the meaning of a verse in one or two lines.'
-       ]
- where slug = 'gita-shloka';
+alter table registrations drop constraint if exists registrations_reachable;
+
+alter table registrations add constraint registrations_reachable
+  check (nullif(btrim(coalesce(whatsapp, '')), '') is not null) not valid;
+
 
 -- ---------------------------------------------------------------------------
--- 8. Class groups, as advertised on the poster. Generated from class_level, so
---    it cannot drift. A = I–IV, B = V–VII, C = VIII–X.
+-- 10. Sanity check — read these before you open registration
 -- ---------------------------------------------------------------------------
-do $$ begin
-  alter table registrations add column class_group text
-    generated always as (
-      case when class_level <= 4 then 'A'
-           when class_level <= 7 then 'B'
-           else 'C' end
-    ) stored;
-exception when duplicate_column then null; end $$;
 
-create index if not exists registrations_group_idx on registrations (class_group);
-
--- ---------------------------------------------------------------------------
--- 9. Sanity check — what the site will show
--- ---------------------------------------------------------------------------
-select value->>'upi_id' as upi_id_students_will_pay_to,
-       value->'methods' as enabled_methods
-  from settings where key = 'payment';
-
+-- The running order, with times and cut-offs. Expect six rows, all 'onsite'.
 select name,
-       sanskrit_name,
        mode,
        event_date,
+       to_char(start_time, 'HH24:MI') as starts,
+       to_char(end_time,   'HH24:MI') as ends,
+       registration_closes_at as entries_close,
        requires_selection as picks_a_song
   from tracks
- order by sort_order;
+ where is_active
+ order by event_date, start_time, sort_order;
+
+-- Payment: expect pay_at_venue true and the other two false.
+select value->'methods' as enabled_methods,
+       value->>'upi_id' as upi_id_should_be_blank
+  from settings where key = 'payment';
+
+-- What each existing registration now owes.
+select r.reg_code,
+       r.full_name,
+       count(rt.id) as competitions,
+       r.fee_amount,
+       r.payment_method,
+       r.payment_status
+  from registrations r
+  left join registration_tracks rt on rt.registration_id = r.id
+ group by r.id
+ order by r.created_at;
+
+-- Registrations with no WhatsApp number, written under the old rule. Fill
+-- these in from Admin → Registrations, or the day-of reminders will miss them.
+select reg_code, full_name, guardian_phone, email
+  from registrations
+ where nullif(btrim(coalesce(whatsapp, '')), '') is null;

@@ -251,7 +251,7 @@ export default function RegistrationDetail() {
                     <div>
                       <h2 className="text-lg font-black text-night-950">{e.track?.name}</h2>
                       <p className="text-[13px] text-night-950/55">
-                        {e.track?.mode === 'online' ? 'Online' : 'At the temple'}
+                        {e.track?.event_date ? formatLongDate(e.track.event_date) : 'At the temple'}
                         {e.selection_item ? ` · ${e.selection_item.title}` : ''}
                       </p>
                     </div>

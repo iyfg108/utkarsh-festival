@@ -1,5 +1,15 @@
 # Payments
 
+> **2026: there is no online payment.** Every student pays cash at the temple on
+> the day of their first competition, at **₹99 per competition entered** — so
+> three competitions is ₹297. The registration form works out the total and
+> shows it before the student submits, and `submit_registration` computes it
+> server-side from the number of entries; the browser is never trusted with it.
+>
+> The UPI and Razorpay flows described below are **intact but switched off** in
+> `settings.payment.methods`. Turning either back on is a toggle in
+> Admin → Settings, not a rebuild — but set a real `upi_id` first.
+
 Two ways to take the ₹99, and you can run both at once. Which ones students see
 is controlled from **Admin → Settings → How students pay**, so you can switch
 Razorpay on later without touching the code.

@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useFestival } from '@/context/FestivalContext'
 import { useAsync } from '@/hooks/useAsync'
 import { fetchAvailability } from '@/lib/queries'
-import { accent, cn, formatLongDate } from '@/lib/utils'
+import { accent, cn, entriesClosed, formatLongDate, formatTimeRange } from '@/lib/utils'
 import { ButtonLink } from '@/components/ui/Button'
 import { Badge, EmptyState, LoadingBlock, Reveal } from '@/components/ui/Primitives'
 import {
@@ -50,7 +50,6 @@ export default function CompetitionDetail() {
   const a = accent(track.accent)
   const items = availability.data ?? []
   const regOpen = settings?.registration.open ?? false
-  const online = track.mode === 'online'
 
   return (
     <>
@@ -99,13 +98,21 @@ export default function CompetitionDetail() {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            <Badge tone={online ? 'info' : 'warning'}>
-              {online ? 'Held online' : 'At the temple'}
-            </Badge>
+            <Badge tone="warning">At the temple</Badge>
             {track.event_date ? (
               <Badge tone="neutral">
                 <CalendarIcon className="size-3" />
                 {formatLongDate(track.event_date)}
+                {formatTimeRange(track.start_time, track.end_time)
+                  ? ` · ${formatTimeRange(track.start_time, track.end_time)}`
+                  : ''}
+              </Badge>
+            ) : null}
+            {track.registration_closes_at ? (
+              <Badge tone={entriesClosed(track.registration_closes_at) ? 'danger' : 'neutral'}>
+                {entriesClosed(track.registration_closes_at)
+                  ? 'Entries closed'
+                  : `Entries close ${formatLongDate(track.registration_closes_at)}`}
               </Badge>
             ) : null}
             <Badge tone="neutral">
@@ -116,7 +123,7 @@ export default function CompetitionDetail() {
             ) : null}
           </div>
 
-          {!online && settings?.event.venue ? (
+          {settings?.event.venue ? (
             <p className="mt-4 flex items-center gap-2 text-sm text-night-950/60">
               <MapPinIcon className="size-4 text-marigold-600" />
               {settings.event.venue}

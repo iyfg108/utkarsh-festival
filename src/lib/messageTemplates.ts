@@ -38,13 +38,13 @@ export const SEGMENTS: { key: SegmentKey; label: string; description: string }[]
   },
   {
     key: 'online_day',
-    label: 'Online day',
-    description: 'Entered at least one competition held online.',
+    label: 'First day (23 Aug)',
+    description: 'Entered at least one competition on the first day.',
   },
   {
     key: 'venue_day',
-    label: 'Temple day',
-    description: 'Entered at least one competition held at the temple.',
+    label: 'Second day (30 Aug)',
+    description: 'Entered at least one competition on the second day.',
   },
   {
     key: 'certificate_pending',
@@ -56,36 +56,34 @@ export const SEGMENTS: { key: SegmentKey; label: string; description: string }[]
 export const TEMPLATES: MessageTemplate[] = [
   {
     key: 'online_reminder',
-    label: 'Online competition reminder',
+    label: 'First day reminder (23 Aug)',
     segment: 'online_day',
-    subject: 'Utkarsh: your online competition is on {{online_date}}',
+    subject: 'Utkarsh: your first competition is on {{online_date}}',
     body: `Hare Krishna {{first_name}},
 
-Your Utkarsh online competition is on {{online_date}}.
+Your first Utkarsh competition is on {{online_date}} at {{venue}}, 9 am to 11 am.
 
 You are entered in: {{competitions}}
 Your registration code: {{code}}
 
-Please join using this link: {{link}}
-
-Be ready about ten minutes early, and make sure you have a steady internet connection. Do the competition on your own — no notes, no help.
+Please come 15 minutes early so we can seat you with your group. The quiz is answered on a device, but you attempt it here at the temple — devices are provided, so bring nothing but yourself.
 
 Good luck!
 Team Utkarsh, ISKCON Guwahati`,
     whatsapp: `Hare Krishna {{first_name}}! 🙏
 
-Your Utkarsh online competition is on {{online_date}}.
+Your first Utkarsh competition is on {{online_date}}, 9–11 am at {{venue}}.
 Entered in: {{competitions}}
 Code: {{code}}
 
-Join here: {{link}}
+Please come 15 min early. Devices are provided for the quiz.
 
-Be ready 10 minutes early. Good luck!`,
-    hint: 'Put the quiz link in the Link field below before sending.',
+Good luck!`,
+    hint: 'Everything is at the temple — no joining link needed.',
   },
   {
     key: 'venue_reminder',
-    label: 'Temple day reminder',
+    label: 'Second day reminder (30 Aug)',
     segment: 'venue_day',
     subject: 'Utkarsh: see you at the temple on {{venue_date}}',
     body: `Hare Krishna {{first_name}},
@@ -112,26 +110,23 @@ Certificates, prizes and prasadam on the day!`,
   },
   {
     key: 'payment_reminder',
-    label: 'Payment reminder',
+    label: 'Fee reminder (cash on the day)',
     segment: 'unpaid',
-    subject: 'Utkarsh: your {{amount}} registration fee',
+    subject: 'Utkarsh: {{amount}} to bring on the day',
     body: `Hare Krishna {{first_name}},
 
-Your Utkarsh registration ({{code}}) is saved, but the {{amount}} fee has not reached us yet.
+Your Utkarsh registration ({{code}}) is saved. The fee of {{amount}} is paid in cash at the temple on the day of your first competition — there is nothing to pay online.
 
-You can pay by UPI to {{upi_id}}, then enter the reference number on the Check status page using your code and the guardian phone number you registered with.
-
-If you have already paid, please ignore this — we may still be matching it against our statement.
+Please bring the exact amount if you can, and come 30 minutes early so the desk is not held up.
 
 Team Utkarsh, ISKCON Guwahati`,
     whatsapp: `Hare Krishna {{first_name}} 🙏
 
-Your Utkarsh registration {{code}} is saved, but the {{amount}} fee has not reached us yet.
+Your Utkarsh registration {{code}} is saved.
 
-Pay by UPI to: {{upi_id}}
-Then enter the reference on the Check status page.
+Fee: {{amount}} — paid in cash at the temple on the day, nothing to pay online.
 
-Already paid? Please ignore — we may still be matching it.`,
+Please come 30 minutes early with the exact amount if you can.`,
   },
   {
     key: 'certificate',

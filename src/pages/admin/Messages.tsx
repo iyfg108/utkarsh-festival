@@ -10,7 +10,7 @@ import {
   unlogMessage,
 } from '@/lib/queries'
 import { friendlyError } from '@/lib/supabase'
-import { cn, formatLongDate } from '@/lib/utils'
+import { cn, formatLongDate, formatMoney } from '@/lib/utils'
 import {
   SEGMENTS,
   TEMPLATES,
@@ -91,6 +91,9 @@ export default function Messages() {
     return set
   }, [log.data, templateKey, channel])
 
+  const firstDay = settings?.event.online_date ?? null
+  const secondDay = settings?.event.onsite_date ?? null
+
   const inSegment = useMemo(() => {
     return rows.filter((r) => {
       if (r.status !== 'confirmed') return false
@@ -101,11 +104,13 @@ export default function Messages() {
           if (r.payment_status === 'paid' || r.payment_status === 'awaiting_verification')
             return false
           break
+        // Split by DATE, not by mode: every competition is at the temple
+        // now, so mode no longer tells the two days apart.
         case 'online_day':
-          if (!r.registration_tracks.some((e) => e.track?.mode === 'online')) return false
+          if (!r.registration_tracks.some((e) => e.track?.event_date === firstDay)) return false
           break
         case 'venue_day':
-          if (!r.registration_tracks.some((e) => e.track?.mode === 'onsite')) return false
+          if (!r.registration_tracks.some((e) => e.track?.event_date === secondDay)) return false
           break
         case 'certificate_pending':
           if (r.certificate_status !== 'pending') return false
@@ -120,7 +125,7 @@ export default function Messages() {
       }
       return true
     })
-  }, [rows, segment, q])
+  }, [rows, segment, q, firstDay, secondDay])
 
   /** Reachable on the chosen channel, and not already done (if skipping). */
   const targets = useMemo(() => {
@@ -225,7 +230,7 @@ export default function Messages() {
     name: 'Aarav Sharma',
     first_name: 'Aarav',
     code: 'UTK26-1042',
-    amount: '₹99',
+    amount: formatMoney((settings?.registration.fee ?? 99) * 2),
     competitions: 'Vedic Quiz, Vedic Art',
   })
 

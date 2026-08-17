@@ -1,7 +1,7 @@
 import { useFestival } from '@/context/FestivalContext'
 import { useAsync } from '@/hooks/useAsync'
 import { fetchPublicStats } from '@/lib/queries'
-import { cn, formatLongDate } from '@/lib/utils'
+import { cn, formatLongDate, formatTimeRange } from '@/lib/utils'
 import { ButtonLink } from '@/components/ui/Button'
 import { CountUp, Reveal, SectionHeading } from '@/components/ui/Primitives'
 import {
@@ -26,7 +26,7 @@ import { CompetitionCard } from '@/components/site/CompetitionCard'
 import { Countdown } from '@/components/site/Countdown'
 
 export default function Home() {
-  const { settings, tracks, onlineTracks, onsiteTracks } = useFestival()
+  const { settings, tracks, daySlots } = useFestival()
   const stats = useAsync(() => fetchPublicStats(), [])
 
   const event = settings?.event
@@ -59,7 +59,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-relaxed text-night-950/70 sm:text-lg">
-              Five competitions in art, music, scripture and general knowledge — open to
+              Six competitions in art, music, scripture and general knowledge — open to
               every student from Class 1 to 10. Enter as many as you like.
             </p>
 
@@ -106,18 +106,15 @@ export default function Home() {
               <Countdown date={event?.online_date} light className="mt-5" />
 
               <div className="mt-7 space-y-4 border-t border-white/10 pt-6">
-                <DayRow
-                  date={event?.online_date}
-                  label="Online"
-                  detail={onlineTracks.map((t) => t.name).join(' · ') || 'Vedic Quiz'}
-                  tone="peacock"
-                />
-                <DayRow
-                  date={event?.onsite_date}
-                  label="At the temple"
-                  detail={onsiteTracks.map((t) => t.name).join(' · ') || 'Art, Fancy Dress, Bhajan, Shloka'}
-                  tone="marigold"
-                />
+                {daySlots.map((slot, i) => (
+                  <DayRow
+                    key={`${slot.date}-${slot.start ?? i}`}
+                    date={slot.date}
+                    label={formatTimeRange(slot.start, slot.end) ?? 'At the temple'}
+                    detail={slot.tracks.map((t) => t.name).join(' · ')}
+                    tone={i % 2 === 0 ? 'peacock' : 'marigold'}
+                  />
+                ))}
               </div>
 
               <Flute className="mt-7 w-full opacity-80" />
@@ -189,7 +186,7 @@ export default function Home() {
                   Find the one that's <span className="text-gradient-festival">yours</span>
                 </>
               }
-              subtitle="Enter one, or enter them all — there is no extra charge and no age groups to worry about."
+              subtitle="Enter one, or enter them all. No age groups to worry about — ₹99 for each competition you enter."
             />
           </Reveal>
 

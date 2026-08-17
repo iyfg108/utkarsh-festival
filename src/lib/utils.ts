@@ -203,6 +203,49 @@ export function devicePlatform(): 'android' | 'ios' | 'desktop' {
   return 'desktop'
 }
 
+/**
+ * "09:00:00" → "9 am", "16:00:00" → "4 pm", "12:00:00" → "12 noon".
+ * Written by hand rather than through Intl: these are bare wall-clock times
+ * with no date attached, and parsing them into a Date to format them invites
+ * a timezone shifting them by half an hour.
+ */
+export function formatTime(value: string | null | undefined): string | null {
+  if (!value) return null
+  const [hStr, mStr] = value.split(':')
+  const h = Number(hStr)
+  const m = Number(mStr ?? 0)
+  if (Number.isNaN(h)) return null
+
+  if (h === 12 && m === 0) return '12 noon'
+  const suffix = h < 12 ? 'am' : 'pm'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return m === 0 ? `${h12} ${suffix}` : `${h12}.${String(m).padStart(2, '0')} ${suffix}`
+}
+
+/** "9 am to 12 noon" for a competition's slot, or null if it has no times. */
+export function formatTimeRange(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): string | null {
+  const a = formatTime(start)
+  if (!a) return null
+  const b = formatTime(end)
+  return b ? `${a} to ${b}` : a
+}
+
+/**
+ * Whether entries for a competition have closed.
+ *
+ * Compared as calendar dates in the festival's own timezone, not as instants:
+ * "closes on 22 August" means the whole of the 22nd is still open, wherever
+ * the student's phone thinks it is.
+ */
+export function entriesClosed(closesAt: string | null | undefined): boolean {
+  if (!closesAt) return false
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+  return today > closesAt.slice(0, 10)
+}
+
 export const CERTIFICATE_LABEL: Record<CertificateStatus, string> = {
   pending: 'Not issued',
   collected: 'Collected in person',

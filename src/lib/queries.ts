@@ -226,7 +226,7 @@ const REGISTRATION_SELECT = `
   *,
   registration_tracks (
     *,
-    track:tracks ( id, name, slug, accent, icon, mode ),
+    track:tracks ( id, name, slug, accent, icon, mode, event_date ),
     selection_item:selection_items ( id, title ),
     team_members ( * )
   )

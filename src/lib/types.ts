@@ -37,6 +37,11 @@ export interface Track {
   duration_minutes: number | null
   mode: EventMode
   event_date: string | null
+  /** "09:00:00" — when this competition runs on its day. */
+  start_time: string | null
+  end_time: string | null
+  /** Entries for this competition close after this date. Per day, not festival-wide. */
+  registration_closes_at: string | null
   min_class: number
   max_class: number
   is_team: boolean
@@ -286,7 +291,7 @@ export interface CreateOrderResult {
    ------------------------------------------------------------------------- */
 export interface RegistrationRow extends Registration {
   registration_tracks: (RegistrationTrack & {
-    track: Pick<Track, 'id' | 'name' | 'slug' | 'accent' | 'icon' | 'mode'> | null
+    track: Pick<Track, 'id' | 'name' | 'slug' | 'accent' | 'icon' | 'mode' | 'event_date'> | null
     selection_item: Pick<SelectionItem, 'id' | 'title'> | null
     team_members?: TeamMember[]
   })[]

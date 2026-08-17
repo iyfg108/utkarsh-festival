@@ -7,10 +7,13 @@ import { friendlyError } from '@/lib/supabase'
 import {
   accent,
   cn,
+  entriesClosed,
   formatLongDate,
   formatMoney,
+  formatTimeRange,
   isValidEmail,
   isValidPhone,
+  pluralise,
 } from '@/lib/utils'
 import type {
   EntryDraft,
@@ -67,7 +70,8 @@ export default function Register() {
   const [entries, setEntries] = useState<EntryState[]>([])
   const [method, setMethod] = useState<PaymentMethod>('upi_manual')
 
-  const fee = settings?.registration.fee ?? 99
+  /** The price of ONE competition — the total is this times the entries. */
+  const feePerCompetition = settings?.registration.fee ?? 99
   const regOpen = settings?.registration.open ?? false
   const event = settings?.event
   const payment = settings?.payment
@@ -106,22 +110,32 @@ export default function Register() {
 
   const songTracks = selectedTracks.filter((t) => t.requires_selection)
   const needsSong = songTracks.length > 0
-  const hasOnsite = selectedTracks.some((t) => t.mode === 'onsite')
+
+  /** Charged per competition entered, so the total moves as they tick boxes. */
+  const fee = feePerCompetition * entries.length
+
+  /** Cash at the temple is the only method on offer — see the payment step. */
+  const onlyPayAtVenue = Boolean(
+    methods?.pay_at_venue && !methods.upi_manual && !methods.razorpay,
+  )
 
   /**
-   * Keep the chosen method legal as the student changes their competitions or
-   * as organisers switch methods on and off. Paying at the venue only makes
-   * sense with at least one competition held there.
+   * Keep the chosen method legal as organisers switch methods on and off.
+   *
+   * For 2026 only "pay at the temple" is enabled, so this settles on that and
+   * the payment step renders as a statement rather than a choice. The other
+   * branches are left in because turning UPI or Razorpay back on is a toggle in
+   * Admin → Settings, and this is what makes the form follow it.
    */
   useEffect(() => {
     if (!methods) return
     const allowed: PaymentMethod[] = []
+    if (methods.pay_at_venue) allowed.push('pay_at_venue')
     if (methods.upi_manual) allowed.push('upi_manual')
     if (methods.razorpay) allowed.push('razorpay')
-    if (methods.pay_at_venue && hasOnsite) allowed.push('pay_at_venue')
 
     if (allowed.length > 0 && !allowed.includes(method)) setMethod(allowed[0])
-  }, [methods, hasOnsite, method])
+  }, [methods, method])
 
   // ---- song availability -------------------------------------------------
   const [availability, setAvailability] = useState<SelectionAvailability[]>([])
@@ -194,9 +208,11 @@ export default function Register() {
       if (studentPhone && !isValidPhone(studentPhone))
         e.studentPhone = 'That does not look like a valid number.'
       if (email && !isValidEmail(email)) e.email = 'That email address looks incomplete.'
-      if (whatsapp && !isValidPhone(whatsapp)) e.whatsapp = 'That does not look like a valid number.'
-      if (!email.trim() && !whatsapp.trim())
-        e.reach = 'Please give us an email address or a WhatsApp number — we send certificates there.'
+      // WhatsApp is how the festival actually reaches people, so it is the
+      // required one and email is the extra. The database enforces this too.
+      if (!whatsapp.trim())
+        e.whatsapp = 'A WhatsApp number is required — this is where we send joining details and your certificate.'
+      else if (!isValidPhone(whatsapp)) e.whatsapp = 'That does not look like a valid number.'
     }
 
     if (s === 2 && entries.length === 0) {
@@ -380,7 +396,7 @@ export default function Register() {
             Let's get you <span className="text-gradient-festival">on that stage</span>
           </>
         }
-        subtitle={`About two minutes, and ${formatMoney(fee)} for as many competitions as you like.`}
+        subtitle={`About two minutes. ${formatMoney(feePerCompetition)} for each competition you enter.`}
       />
 
       <section className="mx-auto max-w-3xl px-4 pb-20 sm:px-6 lg:px-8">
@@ -526,15 +542,25 @@ export default function Register() {
                 )}
               >
                 <p className="text-sm font-bold text-night-950">
-                  At least one of these is required
+                  How we reach you
                 </p>
                 <p className="mt-0.5 text-[13px] leading-relaxed text-night-950/65">
-                  If you do not collect your certificate at the temple on{' '}
-                  {event?.onsite_date ? formatLongDate(event.onsite_date) : '30 August'}, we will
-                  send a digital copy here.
+                  Everything goes to WhatsApp — what to bring, your timing on the day, and your
+                  certificate if you do not collect it at the temple on{' '}
+                  {event?.onsite_date ? formatLongDate(event.onsite_date) : '30 August'}.
                 </p>
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Input
+                    label="Guardian's WhatsApp number"
+                    required
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    error={errors.whatsapp}
+                    placeholder="98640 00000"
+                    inputMode="tel"
+                    hint="The number a parent or guardian uses on WhatsApp."
+                  />
                   <Input
                     label="Email"
                     type="email"
@@ -543,20 +569,9 @@ export default function Register() {
                     error={errors.email}
                     placeholder="name@example.com"
                     autoComplete="email"
-                  />
-                  <Input
-                    label="WhatsApp number"
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    error={errors.whatsapp}
-                    placeholder="98640 00000"
-                    inputMode="tel"
+                    hint="Optional — a second place for us to send the certificate."
                   />
                 </div>
-
-                {errors.reach ? (
-                  <p className="mt-3 text-[13px] font-semibold text-rose-700">{errors.reach}</p>
-                ) : null}
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
@@ -584,7 +599,7 @@ export default function Register() {
               <StepTitle
                 n={3}
                 title="Choose your competitions"
-                hint={`Pick as many as you like — the ${formatMoney(fee)} fee covers all of them.`}
+                hint={`${formatMoney(feePerCompetition)} for each one you enter. Pick as many as you like.`}
               />
 
               {errors.entries ? (
@@ -610,7 +625,12 @@ export default function Register() {
                   // entry through — it just avoids locking the whole form.
                   const min = t.min_class ?? 1
                   const max = t.max_class ?? 10
-                  const eligible = n ? n >= min && n <= max : true
+                  const inClassRange = n ? n >= min && n <= max : true
+                  // Each day closes on its own date. The RPC refuses a late
+                  // entry too, so this is only here to save the student
+                  // filling in the whole form before being told.
+                  const closed = entriesClosed(t.registration_closes_at)
+                  const eligible = inClassRange && !closed
                   const a = accent(t.accent)
                   return (
                     <button
@@ -641,15 +661,17 @@ export default function Register() {
                       <span className="min-w-0 flex-1">
                         <span className="block font-bold text-night-950">{t.name}</span>
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-night-950/55">
-                          <span
-                            className={cn(
-                              'font-bold',
-                              t.mode === 'online' ? 'text-peacock-700' : 'text-marigold-700',
-                            )}
-                          >
-                            {t.mode === 'online' ? 'Online' : 'At the temple'}
-                          </span>
-                          {t.event_date ? <span>· {formatLongDate(t.event_date)}</span> : null}
+                          {t.event_date ? (
+                            <span className="font-bold text-marigold-700">
+                              {formatLongDate(t.event_date)}
+                            </span>
+                          ) : null}
+                          {formatTimeRange(t.start_time, t.end_time) ? (
+                            <span>· {formatTimeRange(t.start_time, t.end_time)}</span>
+                          ) : null}
+                          {closed ? (
+                            <span className="font-bold text-rose-700">· Entries closed</span>
+                          ) : null}
                         </span>
                       </span>
 
@@ -810,8 +832,10 @@ export default function Register() {
                           <span className="block text-sm font-bold text-night-950">{t.name}</span>
                           <span className="block truncate text-[12px] text-night-950/55">
                             {pick ? `${pick.title} · ` : ''}
-                            {t.mode === 'online' ? 'Online' : 'At the temple'}
-                            {t.event_date ? ` · ${formatLongDate(t.event_date)}` : ''}
+                            {t.event_date ? formatLongDate(t.event_date) : ''}
+                            {formatTimeRange(t.start_time, t.end_time)
+                              ? ` · ${formatTimeRange(t.start_time, t.end_time)}`
+                              : ''}
                           </span>
                         </span>
                       </li>
@@ -826,60 +850,72 @@ export default function Register() {
                   Payment
                 </h3>
 
-                <div className="mb-3 flex items-center justify-between rounded-2xl bg-night px-5 py-4 text-cream-50">
-                  <span className="text-sm font-semibold text-cream-100/75">
-                    Registration fee
-                  </span>
-                  <span className="font-display text-2xl font-black">{formatMoney(fee)}</span>
+                {/* The sum, shown so nobody is surprised at the desk. */}
+                <div className="mb-3 rounded-2xl bg-night px-5 py-4 text-cream-50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-cream-100/75">
+                      {entries.length} {pluralise(entries.length, 'competition')} ×{' '}
+                      {formatMoney(feePerCompetition)}
+                    </span>
+                    <span className="font-display text-2xl font-black">{formatMoney(fee)}</span>
+                  </div>
                 </div>
 
-                <div className="grid gap-2.5">
-                  {methods?.upi_manual ? (
-                    <PayOption
-                      active={method === 'upi_manual'}
-                      onClick={() => setMethod('upi_manual')}
-                      title="Pay by UPI"
-                      body="Scan a QR or tap through to GPay, PhonePe or Paytm on the next screen, then enter the reference number so we can match your payment."
-                      icon={<QrIcon className="size-5" />}
-                    />
-                  ) : null}
+                {/*
+                  Only one method is enabled for 2026, so this is a statement of
+                  what happens rather than a list of one thing to choose from.
+                  If UPI or Razorpay is switched back on in Admin → Settings the
+                  choices reappear.
+                */}
+                {onlyPayAtVenue ? (
+                  <div className="flex items-start gap-3 rounded-2xl border-2 border-marigold-300 bg-marigold-50 px-4 py-4">
+                    <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-marigold-500 text-white">
+                      <CalendarIcon className="size-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-marigold-900">
+                        Pay at the temple on the day
+                      </p>
+                      <p className="mt-0.5 text-[13px] leading-relaxed text-marigold-900/80">
+                        Bring <strong>{formatMoney(fee)}</strong> in cash to{' '}
+                        {event?.venue ?? 'the temple'}. Nothing to pay now — your place is saved as
+                        soon as you submit this form.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-2.5">
+                    {methods?.pay_at_venue ? (
+                      <PayOption
+                        active={method === 'pay_at_venue'}
+                        onClick={() => setMethod('pay_at_venue')}
+                        title="Pay at the temple on the day"
+                        body={`Bring ${formatMoney(fee)} in cash to ${event?.venue ?? 'the temple'}.`}
+                        icon={<CalendarIcon className="size-5" />}
+                      />
+                    ) : null}
 
-                  {methods?.razorpay ? (
-                    <PayOption
-                      active={method === 'razorpay'}
-                      onClick={() => setMethod('razorpay')}
-                      title="Pay by card or net banking"
-                      body="Secure payment through Razorpay. Your place is confirmed straight away."
-                      icon={<LockIcon className="size-5" />}
-                    />
-                  ) : null}
+                    {methods?.upi_manual ? (
+                      <PayOption
+                        active={method === 'upi_manual'}
+                        onClick={() => setMethod('upi_manual')}
+                        title="Pay by UPI"
+                        body="Tap through to GPay, PhonePe or Paytm on the next screen, then enter the reference number so we can match your payment."
+                        icon={<QrIcon className="size-5" />}
+                      />
+                    ) : null}
 
-                  {methods?.pay_at_venue ? (
-                    <PayOption
-                      active={method === 'pay_at_venue'}
-                      onClick={() => hasOnsite && setMethod('pay_at_venue')}
-                      disabled={!hasOnsite}
-                      title="Pay at the temple on the day"
-                      body={
-                        hasOnsite
-                          ? `Bring ${formatMoney(fee)} in cash to ${event?.venue ?? 'the temple'} on ${
-                              event?.onsite_date ? formatLongDate(event.onsite_date) : '30 August'
-                            }.`
-                          : 'Only available if you have entered at least one competition held at the temple. Your competitions are all online.'
-                      }
-                      icon={<CalendarIcon className="size-5" />}
-                    />
-                  ) : null}
-                </div>
-
-                {!hasOnsite ? (
-                  <p className="mt-3 rounded-2xl border border-peacock-200 bg-peacock-50 px-4 py-3 text-[13px] leading-relaxed text-peacock-900">
-                    Your competitions are all online, so the fee needs to be paid online. You are
-                    still very welcome to come to the temple on{' '}
-                    {event?.onsite_date ? formatLongDate(event.onsite_date) : '30 August'} to collect
-                    your certificate and prasadam.
-                  </p>
-                ) : null}
+                    {methods?.razorpay ? (
+                      <PayOption
+                        active={method === 'razorpay'}
+                        onClick={() => setMethod('razorpay')}
+                        title="Pay by card or net banking"
+                        body="Secure payment through Razorpay. Your place is confirmed straight away."
+                        icon={<LockIcon className="size-5" />}
+                      />
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               <Checkbox

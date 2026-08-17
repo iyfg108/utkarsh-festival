@@ -3,7 +3,7 @@ import { useFestival } from '@/context/FestivalContext'
 import { useToast } from '@/context/ToastContext'
 import { logAudit, saveSetting } from '@/lib/queries'
 import { friendlyError } from '@/lib/supabase'
-import { formatLongDate } from '@/lib/utils'
+import { formatLongDate, formatMoney } from '@/lib/utils'
 import type {
   ContactSettings,
   EventSettings,
@@ -90,12 +90,14 @@ export default function SettingsAdmin() {
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Input
-              label="Registration fee (₹)"
+              label="Fee per competition (₹)"
               type="number"
               min={0}
               value={registration.fee}
               onChange={(e) => setRegistration({ ...registration, fee: Number(e.target.value) })}
-              hint="Charged once per student, however many competitions they enter."
+              hint={`Charged for EACH competition entered — a student entering three pays ${formatMoney(
+                (registration.fee || 0) * 3,
+              )}.`}
             />
             <Input
               label="Registration closes on"
@@ -138,25 +140,25 @@ export default function SettingsAdmin() {
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <Input
-              label="Online day"
+              label="First day"
               type="date"
               value={event.online_date}
               onChange={(e) => setEvent({ ...event, online_date: e.target.value })}
               hint={
                 onlineTracks.length > 0
                   ? onlineTracks.map((t) => t.name).join(', ')
-                  : 'No competitions marked online yet.'
+                  : 'No competitions on this date yet.'
               }
             />
             <Input
-              label="Day at the temple"
+              label="Second day"
               type="date"
               value={event.onsite_date}
               onChange={(e) => setEvent({ ...event, onsite_date: e.target.value })}
               hint={
                 onsiteTracks.length > 0
                   ? onsiteTracks.map((t) => t.name).join(', ')
-                  : 'No competitions marked onsite yet.'
+                  : 'No competitions on this date yet.'
               }
             />
           </div>
