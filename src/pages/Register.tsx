@@ -293,7 +293,7 @@ export default function Register() {
         setStep(3)
         Promise.all(songTracks.map((t) => fetchAvailability(t.id)))
           .then((lists) => setAvailability(lists.flat()))
-          .catch(() => {})
+          .catch(() => { })
       }
       setSubmitting(false)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -545,9 +545,7 @@ export default function Register() {
                   How we reach you
                 </p>
                 <p className="mt-0.5 text-[13px] leading-relaxed text-night-950/65">
-                  Everything goes to WhatsApp — what to bring, your timing on the day, and your
-                  certificate if you do not collect it at the temple on{' '}
-                  {event?.onsite_date ? formatLongDate(event.onsite_date) : '30 August'}.
+                  Everything goes to WhatsApp — registration details, what to bring, and your timing on the day of the competition.
                 </p>
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">

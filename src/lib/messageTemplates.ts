@@ -124,7 +124,7 @@ Team Utkarsh, ISKCON Guwahati`,
 
 Your Utkarsh registration {{code}} is saved.
 
-Fee: {{amount}} — paid in cash at the temple on the day, nothing to pay online.
+Fee: {{amount}} — paid in cash/upi at the temple on the day, nothing to pay online.
 
 Please come 30 minutes early with the exact amount if you can.`,
   },

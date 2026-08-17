@@ -27,10 +27,10 @@ export default function Competitions() {
         {onlineTracks.length > 0 ? (
           <div className="mb-14">
             <DayHeading
-              date={event?.online_date}
-              badge="Online"
-              tone="peacock"
-              note="Held online — take part from home. The link reaches you a day before."
+              date={event?.onsite_date}
+              badge="ISKCON Ulubari"
+              tone="marigold"
+              note={`Held at ${event?.venue ?? 'ISKCON Ulubari'} — come in person for the day.`}
             />
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {onlineTracks.map((t, i) => (

@@ -38,7 +38,7 @@ insert into tracks (
       'Individual participation. No phones, notes or help from others.',
       'Come 15 minutes early so we can seat your group together.'
     ],
-    array['Nothing — devices are provided at the temple'],
+    array['A mobile phone with internet connection'],
     30, 'onsite', '2026-08-23',
     '09:00', '11:00', '2026-08-22',
     1, 10, false, 1, 1, false, null, null, 1
