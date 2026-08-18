@@ -564,7 +564,16 @@ $$;
 -- ============================================================================
 --  Public read model
 -- ============================================================================
-create or replace view selection_availability
+-- Dropped and recreated rather than CREATE OR REPLACE: replace can only append
+-- columns to the end of a view, and refuses outright if an existing column
+-- would shift position ("cannot change name of view column"). Two columns were
+-- added in the middle here, which aborted the whole script on any database
+-- that already had the old view — taking every statement after it down with
+-- it. Nothing in the database depends on this view, so the drop is safe; the
+-- grant further down re-applies.
+drop view if exists selection_availability;
+
+create view selection_availability
 with (security_invoker = true) as
   select si.id,
          si.track_id,

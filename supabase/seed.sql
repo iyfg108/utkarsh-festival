@@ -9,6 +9,39 @@
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
+-- Stop early, and say why, if schema.sql has not been run.
+--
+-- Without this the first statement that touches a new column fails with
+-- 'column "syllabus" of relation "tracks" does not exist', which says nothing
+-- about the actual problem and leaves the seed half applied.
+-- ---------------------------------------------------------------------------
+do $$
+declare missing text;
+begin
+  select string_agg(c, ', ') into missing
+    from (values ('syllabus'), ('start_time'), ('end_time'),
+                 ('registration_closes_at'), ('reporting_time')) as v(c)
+   where not exists (
+     select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'tracks' and column_name = v.c
+   );
+
+  if missing is not null then
+    raise exception
+      'Run schema.sql first. This database is missing: tracks.%. seed.sql only fills data — schema.sql creates the columns.',
+      missing;
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'selection_items'
+       and column_name = 'requires_detail'
+  ) then
+    raise exception 'Run schema.sql first. This database is missing selection_items.requires_detail.';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- The six competitions. Everything happens at ISKCON Ulubari, Guwahati.
 --
 --   23 August, 9–11 am    Vedic Quiz · Gita Shloka Recitation · Devotional Essay
