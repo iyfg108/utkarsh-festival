@@ -86,6 +86,7 @@ insert into tracks (
       'Report at 8 am — one hour before the 9 am start.',
       'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
       'Recite from memory — no reading from a book or phone.',
+      'Any verses from the Bhagavad-gita are allowed. The list on this page is only a suggestion.',
       'Sanskrit pronunciation carries the most weight in scoring.',
       'You may be asked the meaning of a verse in one or two lines.'
     ],
@@ -97,12 +98,13 @@ insert into tracks (
   (
     'devotional-essay', 'Devotional Essay', 'Lekhana',
     'Say it in your own words.',
-    'A written essay on a devotional theme, handwritten at the temple. The topics for your class are published below — on the day you are given one of them to write on, so you can think about them all beforehand without preparing an answer to memorise. Judged on thought, clarity and honesty rather than long words.',
+    'A written essay on a devotional theme, handwritten at the temple. On the day you are given two topics for your class and you choose one. The list on this page shows the kind of thing to expect — close to what you will get, though not word for word. Judged on thought, clarity and honesty rather than long words.',
     'scroll', 'indigo',
     array[
       'Report at 8 am — one hour before the 9 am start.',
       'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
-      'The topics for your class are listed below. On the day you are given one of them.',
+      'On the day you are given two topics for your class — you choose one of them.',
+      'The list on this page is a guide to what to expect, not the exact wording.',
       'Handwritten. Paper is provided — bring your own pen.',
       'Write in English, Hindi or Assamese, whichever you think in.',
       'Your own words only. No printed material, no phones, no help from adults.'
@@ -211,7 +213,7 @@ on conflict (slug) do update
 update tracks set syllabus = $syllabus${
   "kind": "topics",
   "heading": "Essay topics",
-  "intro": "Find your class below. On the day you will be given one topic from your group's list to write on — so think about all of them, but do not memorise an answer.",
+  "intro": "These are a guide to the kind of thing you will be asked — not a fixed list. On the day you are given two topics for your class and you choose one to write on. The wording may differ a little from what is here, so read these and think about them, but there is nothing to memorise.",
   "groups": [
     {
       "label": "Class 1 to 2",
@@ -316,7 +318,7 @@ update tracks set syllabus = $syllabus${
 update tracks set syllabus = $syllabus${
   "kind": "verses",
   "heading": "Verses to learn",
-  "intro": "Find your class below and learn the number of verses shown. You may recite any verses from the Bhagavad-gita — these are our suggestions, chosen so the sounds suit your age. Tap any verse to read it on Vedabase with the Devanagari, word meanings and full translation.",
+  "intro": "These are suggestions, not a fixed list — you may recite any verses from the Bhagavad-gita you already know. We have chosen these because the sounds suit each age. Find your class below for how many verses to learn, and tap any verse to read it on Vedabase with the Devanagari, word meanings and full translation.",
   "groups": [
     {
       "label": "Class 1 to 2",
