@@ -32,8 +32,13 @@ export function Syllabus({
       <h2 className="font-display text-2xl font-black text-night-950 sm:text-3xl">
         {data.heading}
       </h2>
+      {data.lead ? (
+        <p className="mt-2 max-w-3xl text-[15px] font-bold leading-relaxed text-night-950">
+          {data.lead}
+        </p>
+      ) : null}
       {data.intro ? (
-        <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-night-950/65">
+        <p className="mt-1.5 max-w-3xl text-[15px] leading-relaxed text-night-950/65">
           {data.intro}
         </p>
       ) : null}

@@ -66,6 +66,8 @@ export interface Track {
 export interface Syllabus {
   kind: 'topics' | 'verses'
   heading: string
+  /** The one line students must not miss — rendered bold, above the intro. */
+  lead?: string
   intro?: string
   groups: SyllabusGroup[]
 }
@@ -104,6 +106,8 @@ export interface SelectionItem {
   /** A category rather than one song — the student names the piece. */
   requires_detail: boolean
   detail_label: string | null
+  /** No cap — show "Open to all" rather than a count. */
+  unlimited: boolean
   is_active: boolean
   sort_order: number
 }
@@ -122,6 +126,7 @@ export interface SelectionAvailability {
   is_full: boolean
   requires_detail: boolean
   detail_label: string | null
+  unlimited: boolean
   sort_order: number
 }
 

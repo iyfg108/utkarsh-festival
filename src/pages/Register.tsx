@@ -790,12 +790,7 @@ export default function Register() {
                                     {o.subtitle}
                                   </span>
                                 ) : null}
-                                {/* A cap of 99 on "Something else" is a
-                                    technicality, not information — showing
-                                    "99 left" next to it would be noise. */}
-                                {o.requires_detail ? null : (
-                                  <SlotMeter item={o} className="mt-1.5" />
-                                )}
+                                <SlotMeter item={o} className="mt-1.5" />
                               </span>
                               {picked ? (
                                 <span className="grid size-6 shrink-0 place-items-center rounded-full bg-marigold-500 text-white">

@@ -136,6 +136,11 @@ create table if not exists selection_items (
   -- the judges know what is coming.
   requires_detail boolean not null default false,
   detail_label  text,
+  -- No cap at all. max_slots still holds a number because the
+  -- oversubscription check needs something to compare against, but nothing
+  -- should show a count for these — "96 left" is not information, and drawing
+  -- a dot per slot drew 99 of them straight off the side of the card.
+  unlimited     boolean not null default false,
   is_active     boolean not null default true,
   sort_order    int  not null default 0,
   created_at    timestamptz not null default now(),
@@ -174,6 +179,10 @@ exception when duplicate_column then null; end $$;
 
 do $$ begin
   alter table selection_items add column detail_label text;
+exception when duplicate_column then null; end $$;
+
+do $$ begin
+  alter table selection_items add column unlimited boolean not null default false;
 exception when duplicate_column then null; end $$;
 
 
@@ -587,6 +596,7 @@ with (security_invoker = true) as
          (si.taken_count >= si.max_slots)           as is_full,
          si.requires_detail,
          si.detail_label,
+         si.unlimited,
          si.sort_order
     from selection_items si
    where si.is_active;

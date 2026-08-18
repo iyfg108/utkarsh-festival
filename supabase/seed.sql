@@ -66,7 +66,7 @@ insert into tracks (
     'brain', 'teal',
     array[
       'Report at 8 am — one hour before the 9 am start.',
-      'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
+      'Held at ISKCON Ulubari on 23 August, 9 am to 12 noon.',
       'The quiz is answered on a device, but you attempt it at the temple — that way nobody has an unfair advantage at home.',
       'You sit with your group, and each group gets its own set of questions: Group A is Class 1–4, Group B is Class 5–7, Group C is Class 8–10.',
       'Individual participation. No phones, notes or help from others.',
@@ -74,7 +74,7 @@ insert into tracks (
     ],
     array['A mobile phone with internet connection'],
     30, 'onsite', '2026-08-23',
-    '09:00', '11:00', '2026-08-22',
+    '09:00', '12:00', '2026-08-22',
     1, 10, false, 1, 1, false, null, null, 1
   ),
   (
@@ -84,7 +84,7 @@ insert into tracks (
     'scroll', 'gold',
     array[
       'Report at 8 am — one hour before the 9 am start.',
-      'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
+      'Held at ISKCON Ulubari on 23 August, 9 am to 12 noon.',
       'Recite from memory — no reading from a book or phone.',
       'Any verses from the Bhagavad-gita are allowed. The list on this page is only a suggestion.',
       'Sanskrit pronunciation carries the most weight in scoring.',
@@ -92,7 +92,7 @@ insert into tracks (
     ],
     array['Nothing — just your memory and your voice'],
     4, 'onsite', '2026-08-23',
-    '09:00', '11:00', '2026-08-22',
+    '09:00', '12:00', '2026-08-22',
     1, 10, false, 1, 1, false, null, null, 2
   ),
   (
@@ -102,16 +102,16 @@ insert into tracks (
     'scroll', 'indigo',
     array[
       'Report at 8 am — one hour before the 9 am start.',
-      'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
+      'Held at ISKCON Ulubari on 23 August, 9 am to 12 noon.',
       'On the day you are given two topics for your class — you choose one of them.',
       'The list on this page is a guide to what to expect, not the exact wording.',
-      'Handwritten. Paper is provided — bring your own pen.',
+      'Handwritten. Paper and pens are provided — bring your own pen if you prefer one.',
       'Write in English, Hindi or Assamese, whichever you think in.',
       'Your own words only. No printed material, no phones, no help from adults.'
     ],
-    array['A pen you are comfortable writing with'],
+    array['Nothing — paper and pens are provided. Bring your own pen if you prefer.'],
     60, 'onsite', '2026-08-23',
-    '09:00', '11:00', '2026-08-22',
+    '09:00', '12:00', '2026-08-22',
     1, 10, false, 1, 1, false, null, null, 3
   ),
   (
@@ -213,7 +213,8 @@ on conflict (slug) do update
 update tracks set syllabus = $syllabus${
   "kind": "topics",
   "heading": "Essay topics",
-  "intro": "These are a guide to the kind of thing you will be asked — not a fixed list. On the day you are given two topics for your class and you choose one to write on. The wording may differ a little from what is here, so read these and think about them, but there is nothing to memorise.",
+  "lead": "These are only a guide to the kind of thing you will be asked — not a fixed list.",
+  "intro": "On the day you are given two topics for your class and you choose one to write on. The wording may differ a little from what is here, so read these and think about them, but there is nothing to memorise.",
   "groups": [
     {
       "label": "Class 1 to 2",
@@ -318,7 +319,8 @@ update tracks set syllabus = $syllabus${
 update tracks set syllabus = $syllabus${
   "kind": "verses",
   "heading": "Verses to learn",
-  "intro": "These are suggestions, not a fixed list — you may recite any verses from the Bhagavad-gita you already know. We have chosen these because the sounds suit each age. Find your class below for how many verses to learn, and tap any verse to read it on Vedabase with the Devanagari, word meanings and full translation.",
+  "lead": "These are only our suggestions — you may recite ANY verses from the Bhagavad-gita you already know.",
+  "intro": "We chose these because the sounds suit each age. Find your class below for how many verses to learn, and tap any verse to read it on Vedabase with the Devanagari, word meanings and full translation.",
   "groups": [
     {
       "label": "Class 1 to 2",
@@ -552,21 +554,22 @@ select t.id, v.title, v.subtitle, v.cap, v.ord
 -- at three minutes a singer the room runs out long before the number does.
 -- ---------------------------------------------------------------------------
 insert into selection_items
-  (track_id, title, subtitle, max_slots, requires_detail, detail_label, sort_order)
-select t.id, v.title, v.subtitle, v.cap, true, v.label, v.ord
+  (track_id, title, subtitle, max_slots, requires_detail, detail_label, unlimited, sort_order)
+select t.id, v.title, v.subtitle, v.cap, v.needs_name, v.label, true, v.ord
   from tracks t
   cross join (values
+    -- Borgeet is picked and done: there are hundreds and the judges know the
+    -- tradition, so naming the piece up front buys nothing.
     ('Borgeet',
      'Sankardeva / Madhavdeva — the Assamese tradition',
-     99,
-     'Which Borgeet will you sing?',
+     99, false, null,
      30),
+    -- "Something else" still has to be named, or nobody knows what is coming.
     ('Something else — I will sing my own choice',
      'Any bhajan or kirtan not on this list',
-     99,
-     'Which bhajan will you sing?',
+     99, true, 'Which bhajan will you sing?',
      31)
-  ) as v(title, subtitle, cap, label, ord)
+  ) as v(title, subtitle, cap, needs_name, label, ord)
  where t.slug = 'devotional-bhajan'
    and not exists (
      select 1 from selection_items si where si.track_id = t.id and si.title = v.title
@@ -575,10 +578,11 @@ select t.id, v.title, v.subtitle, v.cap, true, v.label, v.ord
 -- Re-runnable: keep the two in step if the wording above is edited later, and
 -- lift the cap on any database seeded before Borgeet became uncapped.
 update selection_items si
-   set requires_detail = true,
+   set unlimited = true,
        max_slots = greatest(si.max_slots, 99),
+       requires_detail = (si.title <> 'Borgeet'),
        detail_label = case
-         when si.title = 'Borgeet' then 'Which Borgeet will you sing?'
+         when si.title = 'Borgeet' then null
          else 'Which bhajan will you sing?'
        end
   from tracks t
