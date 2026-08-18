@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useFestival } from '@/context/FestivalContext'
 import { useAsync } from '@/hooks/useAsync'
 import { fetchAvailability } from '@/lib/queries'
-import { accent, cn, entriesClosed, formatLongDate, formatTimeRange } from '@/lib/utils'
+import { accent, cn, entriesClosed, formatLongDate, formatTime, formatTimeRange } from '@/lib/utils'
 import { ButtonLink } from '@/components/ui/Button'
 import { Badge, EmptyState, LoadingBlock, Reveal } from '@/components/ui/Primitives'
 import {
@@ -107,6 +107,11 @@ export default function CompetitionDetail() {
                 {formatTimeRange(track.start_time, track.end_time)
                   ? ` · ${formatTimeRange(track.start_time, track.end_time)}`
                   : ''}
+              </Badge>
+            ) : null}
+            {track.reporting_time ? (
+              <Badge tone="danger">
+                Report by {formatTime(track.reporting_time)}
               </Badge>
             ) : null}
             {track.registration_closes_at ? (

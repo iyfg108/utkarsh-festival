@@ -40,6 +40,8 @@ export interface Track {
   /** "09:00:00" — when this competition runs on its day. */
   start_time: string | null
   end_time: string | null
+  /** Derived in the database: one hour before start_time. */
+  reporting_time: string | null
   /** Entries for this competition close after this date. Per day, not festival-wide. */
   registration_closes_at: string | null
   min_class: number

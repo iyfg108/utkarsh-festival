@@ -32,11 +32,12 @@ insert into tracks (
     'A quiz on the Bhagavad-gita, the Ramayana and Mahabharata, the Puranas, and the culture and heritage of Bharat. Answered on a device at the temple, so every student sits it under the same conditions.',
     'brain', 'teal',
     array[
+      'Report at 8 am — one hour before the 9 am start.',
       'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
       'The quiz is answered on a device, but you attempt it at the temple — that way nobody has an unfair advantage at home.',
       'You sit with your group, and each group gets its own set of questions: Group A is Class 1–4, Group B is Class 5–7, Group C is Class 8–10.',
       'Individual participation. No phones, notes or help from others.',
-      'Come 15 minutes early so we can seat your group together.'
+      'You will be seated with your group when you report.'
     ],
     array['A mobile phone with internet connection'],
     30, 'onsite', '2026-08-23',
@@ -49,6 +50,7 @@ insert into tracks (
     'Recite verses from the Bhagavad-gita from memory. Judged on pronunciation, rhythm, memory and the feeling you bring to the verse.',
     'scroll', 'gold',
     array[
+      'Report at 8 am — one hour before the 9 am start.',
       'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
       'Recite from memory — no reading from a book or phone.',
       'Sanskrit pronunciation carries the most weight in scoring.',
@@ -65,6 +67,7 @@ insert into tracks (
     'A written essay on a devotional theme, handwritten at the temple. The topics for your class are published below — on the day you are given one of them to write on, so you can think about them all beforehand without preparing an answer to memorise. Judged on thought, clarity and honesty rather than long words.',
     'scroll', 'indigo',
     array[
+      'Report at 8 am — one hour before the 9 am start.',
       'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
       'The topics for your class are listed below. On the day you are given one of them.',
       'Handwritten. Paper is provided — bring your own pen.',
@@ -82,6 +85,7 @@ insert into tracks (
     'Bring the pastimes of Krishna, the beauty of our temples and the spirit of our heritage onto paper.',
     'palette', 'saffron',
     array[
+      'Report at 8 am — one hour before the 9 am start.',
       'Held at ISKCON Ulubari on 30 August, 9 am to 12 noon.',
       'The theme is announced on the spot, so every artist starts equal.',
       'Drawing sheet is provided. Bring your own colours.',
@@ -98,6 +102,7 @@ insert into tracks (
     'Dress as a personality from our scriptures and speak a few lines in their voice. Judged on costume, confidence and how well you carry the character — not on how expensive the outfit is.',
     'mask', 'magenta',
     array[
+      'Report at 8 am — one hour before the 9 am start.',
       'Held at ISKCON Ulubari on 30 August, 9 am to 12 noon.',
       'Speak 4 to 6 lines introducing yourself as that character.',
       'Costume is arranged by the participant.',
@@ -114,6 +119,7 @@ insert into tracks (
     'A bhajan or kirtan of your choosing, sung solo. Harmonium, tabla, kartals or a simple track — or nothing at all. Judged on melody, clarity of words, rhythm and devotion.',
     'music', 'peacock',
     array[
+      'Report at 3 pm — one hour before the 4 pm start.',
       'Held at ISKCON Ulubari on 30 August, 4 pm to 6 pm.',
       'Solo performance only.',
       'Choose your song while registering — at most 3 students may sing the same one.',

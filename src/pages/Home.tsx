@@ -1,7 +1,7 @@
 import { useFestival } from '@/context/FestivalContext'
 import { useAsync } from '@/hooks/useAsync'
 import { fetchPublicStats } from '@/lib/queries'
-import { cn, formatLongDate, formatTimeRange, numberWord } from '@/lib/utils'
+import { cn, formatLongDate, formatTime, formatTimeRange, numberWord } from '@/lib/utils'
 import { ButtonLink } from '@/components/ui/Button'
 import { CountUp, Reveal, SectionHeading } from '@/components/ui/Primitives'
 import {
@@ -111,6 +111,7 @@ export default function Home() {
                     key={`${slot.date}-${slot.start ?? i}`}
                     date={slot.date}
                     label={formatTimeRange(slot.start, slot.end) ?? 'At the temple'}
+                    report={slot.tracks[0]?.reporting_time ?? null}
                     detail={slot.tracks.map((t) => t.name).join(' · ')}
                     tone={i % 2 === 0 ? 'peacock' : 'marigold'}
                   />
@@ -302,11 +303,13 @@ export default function Home() {
 function DayRow({
   date,
   label,
+  report,
   detail,
   tone,
 }: {
   date: string | null | undefined
   label: string
+  report?: string | null
   detail: string
   tone: 'peacock' | 'marigold'
 }) {
@@ -325,6 +328,11 @@ function DayRow({
           {date ? formatLongDate(date) : 'Date to be announced'}
         </p>
         <p className="text-[11px] font-bold uppercase tracking-wider text-marigold-300">{label}</p>
+        {report ? (
+          <p className="text-[11px] font-semibold text-cream-100/70">
+            Report by {formatTime(report)}
+          </p>
+        ) : null}
         <p className="mt-0.5 text-[13px] leading-snug text-cream-100/55">{detail}</p>
       </div>
     </div>

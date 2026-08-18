@@ -85,6 +85,11 @@ create table if not exists tracks (
   -- afternoon), so this belongs to the competition, not to the day.
   start_time         time,
   end_time           time,
+  -- Everyone reports an hour before their competition starts, so 9 am becomes
+  -- 8 am and 4 pm becomes 3 pm. Derived rather than stored by hand: the times
+  -- have moved more than once, and a reporting time that quietly disagrees
+  -- with the start time would put children at the temple at the wrong hour.
+  reporting_time     time generated always as (start_time - interval '1 hour') stored,
   -- Entries close per competition, not for the festival as a whole: the two
   -- days need different cut-offs so there is time to build each day's running
   -- order. Null means "use the festival-wide date in settings".
@@ -152,6 +157,11 @@ exception when duplicate_column then null; end $$;
 
 do $$ begin
   alter table tracks add column registration_closes_at date;
+exception when duplicate_column then null; end $$;
+
+do $$ begin
+  alter table tracks add column reporting_time time
+    generated always as (start_time - interval '1 hour') stored;
 exception when duplicate_column then null; end $$;
 
 do $$ begin

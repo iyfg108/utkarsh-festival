@@ -66,7 +66,7 @@ Your first Utkarsh competition is on {{online_date}} at {{venue}}, 9 am to 11 am
 You are entered in: {{competitions}}
 Your registration code: {{code}}
 
-Please come 15 minutes early so we can seat you with your group. The quiz is answered on a phone, but you attempt it here at the temple, so bring a charged phone with internet.
+Please report at 8 am — one hour before the 9 am start — so we can seat you with your group. The quiz is answered on a phone, but you attempt it here at the temple, so bring a charged phone with internet.
 
 Good luck!
 Team Utkarsh, ISKCON Guwahati`,
@@ -76,7 +76,7 @@ Your first Utkarsh competition is on {{online_date}}, 9–11 am at {{venue}}.
 Entered in: {{competitions}}
 Code: {{code}}
 
-Please come 15 min early. Bring a charged phone with internet for the quiz.
+Please report at 8 am, one hour before the start. Bring a charged phone with internet for the quiz.
 
 Good luck!`,
     hint: 'Everything is at the temple — no joining link needed.',
@@ -93,7 +93,7 @@ We look forward to seeing you at {{venue}} on {{venue_date}}.
 You are entered in: {{competitions}}
 Your registration code: {{code}}
 
-Please arrive 30 minutes before your competition and bring your registration code. Bring whatever your competition asks for — colours for art, your costume for fancy dress, your instrument or track for bhajan.
+Please report one hour before your competition starts — 8 am for art and fancy dress, 3 pm for bhajan — and bring your registration code. Bring whatever your competition asks for — colours for art, your costume for fancy dress, your instrument or track for bhajan.
 
 Certificates, prizes and prasadam will be given on the day.
 
@@ -104,7 +104,7 @@ See you at {{venue}} on {{venue_date}}.
 Entered in: {{competitions}}
 Code: {{code}}
 
-Please come 30 min early with your code, and bring what your competition needs.
+Please report one hour before your competition: 8 am for art and fancy dress, 3 pm for bhajan. Bring your code and whatever your competition needs.
 
 Certificates, prizes and prasadam on the day!`,
   },
@@ -117,7 +117,7 @@ Certificates, prizes and prasadam on the day!`,
 
 Your Utkarsh registration ({{code}}) is saved. The fee of {{amount}} is paid in cash at the temple on the day of your first competition — there is nothing to pay online.
 
-Please bring the exact amount if you can, and come 30 minutes early so the desk is not held up.
+Please bring the exact amount if you can. You report an hour before your competition anyway, which is when the desk collects it.
 
 Team Utkarsh, ISKCON Guwahati`,
     whatsapp: `Hare Krishna {{first_name}} 🙏
@@ -126,7 +126,7 @@ Your Utkarsh registration {{code}} is saved.
 
 Fee: {{amount}} — paid in cash/upi at the temple on the day, nothing to pay online.
 
-Please come 30 minutes early with the exact amount if you can.`,
+Please bring the exact amount if you can — the desk collects it when you report.`,
   },
   {
     key: 'certificate',
