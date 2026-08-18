@@ -1,7 +1,7 @@
 import { useFestival } from '@/context/FestivalContext'
 import { useAsync } from '@/hooks/useAsync'
 import { fetchPublicStats } from '@/lib/queries'
-import { cn, formatLongDate, formatTimeRange } from '@/lib/utils'
+import { cn, formatLongDate, formatTimeRange, numberWord } from '@/lib/utils'
 import { ButtonLink } from '@/components/ui/Button'
 import { CountUp, Reveal, SectionHeading } from '@/components/ui/Primitives'
 import {
@@ -59,8 +59,8 @@ export default function Home() {
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-relaxed text-night-950/70 sm:text-lg">
-              Six competitions in art, music, scripture and general knowledge — open to
-              every student from Class 1 to 10. Enter as many as you like.
+              {numberWord(tracks.length)} competitions in art, music, scripture and general
+              knowledge — open to every student from Class 1 to 10. Enter as many as you like.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">

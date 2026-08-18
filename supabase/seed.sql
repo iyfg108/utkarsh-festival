@@ -504,9 +504,11 @@ select t.id, v.title, v.subtitle, v.cap, v.ord
 -- what is coming, and so two students are not unknowingly preparing the same
 -- song under the same label.
 --
--- The caps are set high rather than removed because the column is `not null`
--- and the oversubscription check needs a ceiling; these are far above any
--- plausible turnout.
+-- Neither is capped in any real sense. The number is 99 rather than null
+-- because max_slots is `not null` and the oversubscription check — the thing
+-- that actually protects the three-singers-per-song rule — needs a ceiling to
+-- compare against. 99 is beyond reach: the bhajan slot is two hours, so even
+-- at three minutes a singer the room runs out long before the number does.
 -- ---------------------------------------------------------------------------
 insert into selection_items
   (track_id, title, subtitle, max_slots, requires_detail, detail_label, sort_order)
@@ -515,7 +517,7 @@ select t.id, v.title, v.subtitle, v.cap, true, v.label, v.ord
   cross join (values
     ('Borgeet',
      'Sankardeva / Madhavdeva — the Assamese tradition',
-     12,
+     99,
      'Which Borgeet will you sing?',
      30),
     ('Something else — I will sing my own choice',
@@ -529,9 +531,11 @@ select t.id, v.title, v.subtitle, v.cap, true, v.label, v.ord
      select 1 from selection_items si where si.track_id = t.id and si.title = v.title
    );
 
--- Re-runnable: keep the two in step if the wording above is edited later.
+-- Re-runnable: keep the two in step if the wording above is edited later, and
+-- lift the cap on any database seeded before Borgeet became uncapped.
 update selection_items si
    set requires_detail = true,
+       max_slots = greatest(si.max_slots, 99),
        detail_label = case
          when si.title = 'Borgeet' then 'Which Borgeet will you sing?'
          else 'Which bhajan will you sing?'

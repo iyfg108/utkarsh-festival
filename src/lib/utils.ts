@@ -364,6 +364,21 @@ export function downloadCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url)
 }
 
+/**
+ * "Six" rather than "6" for prose. Written out because a hardcoded "Five ways
+ * to take part" survived the competition count changing from five to six and
+ * shipped wrong — anywhere the count appears in a sentence should read it from
+ * the data instead. Falls back to the numeral past twelve.
+ */
+const NUMBER_WORDS = [
+  'Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six',
+  'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve',
+]
+
+export function numberWord(n: number): string {
+  return NUMBER_WORDS[n] ?? String(n)
+}
+
 export function pluralise(n: number, one: string, many?: string): string {
   return n === 1 ? one : (many ?? `${one}s`)
 }

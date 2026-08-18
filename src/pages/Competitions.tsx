@@ -1,5 +1,5 @@
 import { useFestival } from '@/context/FestivalContext'
-import { formatLongDate } from '@/lib/utils'
+import { formatLongDate, numberWord } from '@/lib/utils'
 import { PageHeader } from '@/components/site/PageHeader'
 import { CompetitionCard } from '@/components/site/CompetitionCard'
 import { Reveal } from '@/components/ui/Primitives'
@@ -7,7 +7,7 @@ import { ButtonLink } from '@/components/ui/Button'
 import { ArrowRightIcon, MapPinIcon } from '@/components/Icons'
 
 export default function Competitions() {
-  const { onlineTracks, onsiteTracks, settings } = useFestival()
+  const { tracks, onlineTracks, onsiteTracks, settings } = useFestival()
   const event = settings?.event
 
   return (
@@ -16,7 +16,8 @@ export default function Competitions() {
         eyebrow="Competitions"
         title={
           <>
-            Five ways to <span className="text-gradient-festival">take part</span>
+            {numberWord(tracks.length)} ways to{' '}
+            <span className="text-gradient-festival">take part</span>
           </>
         }
         subtitle="Open to Class 1 to 10. Enter as many as you like — ₹99 for each one."
