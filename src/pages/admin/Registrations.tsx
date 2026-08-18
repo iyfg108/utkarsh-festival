@@ -50,6 +50,7 @@ export default function Registrations() {
           r.whatsapp ?? '',
           r.school_name,
           ...r.registration_tracks.map((e) => e.selection_item?.title ?? ''),
+          ...r.registration_tracks.map((e) => e.selection_detail ?? ''),
         ]
           .join(' ')
           .toLowerCase()
@@ -91,7 +92,15 @@ export default function Registrations() {
       // A yes/no column per competition keeps the printed sheet readable.
       for (const t of tracks) {
         const entry = r.registration_tracks.find((e) => e.track_id === t.id)
-        base[t.name] = entry ? (entry.selection_item?.title ?? 'Yes') : ''
+        // The named piece is what the desk and the judges need; the list
+        // entry ("Borgeet") is kept alongside so the column still sorts.
+        base[t.name] = entry
+          ? entry.selection_detail?.trim()
+            ? `${entry.selection_detail.trim()}${
+                entry.selection_item ? ` (${entry.selection_item.title})` : ''
+              }`
+            : (entry.selection_item?.title ?? 'Yes')
+          : ''
       }
 
       base['Fee'] = r.fee_amount
@@ -239,7 +248,7 @@ function Row({ r }: { r: RegistrationRow }) {
             return (
               <span
                 key={e.id}
-                title={e.selection_item?.title ?? e.track?.name ?? ''}
+                title={e.selection_detail?.trim() || e.selection_item?.title || e.track?.name || ''}
                 className={cn(
                   'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold',
                   a.chip,

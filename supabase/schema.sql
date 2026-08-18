@@ -125,6 +125,12 @@ create table if not exists selection_items (
   notes         text,
   max_slots     int  not null default 3,
   taken_count   int  not null default 0,
+  -- Some choices are a category rather than a specific song: "Borgeet" is a
+  -- whole tradition, and "Something else" is by definition open. For those the
+  -- student types which piece they will actually sing, so the running order and
+  -- the judges know what is coming.
+  requires_detail boolean not null default false,
+  detail_label  text,
   is_active     boolean not null default true,
   sort_order    int  not null default 0,
   created_at    timestamptz not null default now(),
@@ -151,6 +157,15 @@ exception when duplicate_column then null; end $$;
 do $$ begin
   alter table tracks add column syllabus jsonb;
 exception when duplicate_column then null; end $$;
+
+do $$ begin
+  alter table selection_items add column requires_detail boolean not null default false;
+exception when duplicate_column then null; end $$;
+
+do $$ begin
+  alter table selection_items add column detail_label text;
+exception when duplicate_column then null; end $$;
+
 
 create index if not exists selection_items_track_idx
   on selection_items (track_id) where is_active;
@@ -271,6 +286,8 @@ create table if not exists registration_tracks (
   registration_id   uuid not null references registrations(id) on delete cascade,
   track_id          uuid not null references tracks(id) on delete restrict,
   selection_item_id uuid references selection_items(id) on delete restrict,
+  -- Filled in when the chosen song has requires_detail set — the actual piece.
+  selection_detail  text,
   team_name         text,
   outcome           entry_outcome not null default 'registered',
   score             numeric(5,2),
@@ -285,6 +302,11 @@ create table if not exists registration_tracks (
 
 create index if not exists registration_tracks_track_idx     on registration_tracks (track_id);
 create index if not exists registration_tracks_selection_idx on registration_tracks (selection_item_id);
+
+-- Added after the first release, so existing databases need it explicitly.
+do $$ begin
+  alter table registration_tracks add column selection_detail text;
+exception when duplicate_column then null; end $$;
 create index if not exists registration_tracks_reg_idx       on registration_tracks (registration_id);
 
 drop trigger if exists registration_tracks_touch on registration_tracks;
@@ -544,6 +566,8 @@ with (security_invoker = true) as
          si.taken_count,
          greatest(si.max_slots - si.taken_count, 0) as slots_left,
          (si.taken_count >= si.max_slots)           as is_full,
+         si.requires_detail,
+         si.detail_label,
          si.sort_order
     from selection_items si
    where si.is_active;
@@ -719,13 +743,23 @@ begin
         raise exception '"%" has just been taken by the maximum number of students. Please go back and choose another song.',
           v_item.title;
       end if;
+
+      -- "Borgeet" and "Something else" are categories, not specific songs, so
+      -- the student has to say which piece they will actually sing. Checked
+      -- here as well as in the form: without it the running order is useless.
+      if v_item.requires_detail
+         and nullif(btrim(v_entry->>'selection_detail'), '') is null then
+        raise exception 'Please write which song you will sing for "%".', v_item.title;
+      end if;
     end if;
 
-    insert into registration_tracks (registration_id, track_id, selection_item_id, team_name)
-    values (
+    insert into registration_tracks (
+      registration_id, track_id, selection_item_id, selection_detail, team_name
+    ) values (
       v_reg_id,
       v_track.id,
       nullif(v_entry->>'selection_item_id', '')::uuid,
+      nullif(btrim(v_entry->>'selection_detail'), ''),
       nullif(btrim(v_entry->>'team_name'), '')
     ) returning id into v_rt_id;
 
@@ -907,7 +941,10 @@ begin
                'track_slug', t.slug,
                'mode',       t.mode,
                'event_date', t.event_date,
-               'selection',  si.title,
+               -- Show the piece they actually named, falling back to the
+               -- catalogue title for ordinary songs.
+               'selection',  coalesce(nullif(btrim(rt.selection_detail), ''), si.title),
+               'selection_category', si.title,
                'team_name',  rt.team_name,
                'outcome',    rt.outcome,
                'award',      rt.award

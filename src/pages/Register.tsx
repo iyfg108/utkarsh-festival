@@ -41,6 +41,8 @@ const STEPS = ['Student', 'Contact', 'Competitions', 'Your song', 'Payment'] as 
 interface EntryState {
   trackId: string
   selectionItemId: string | null
+  /** Filled in when the chosen item is a category — "Borgeet", "Something else". */
+  selectionDetail?: string
 }
 
 export default function Register() {
@@ -224,6 +226,12 @@ export default function Register() {
         const entry = entries.find((x) => x.trackId === t.id)
         if (!entry?.selectionItemId) {
           e[`sel-${t.id}`] = `Please choose a ${t.selection_label?.toLowerCase()} for ${t.name}.`
+          continue
+        }
+        // "Borgeet" and "Something else" are categories — we need the piece.
+        const chosen = availability.find((i) => i.id === entry.selectionItemId)
+        if (chosen?.requires_detail && !entry.selectionDetail?.trim()) {
+          e[`detail-${t.id}`] = chosen.detail_label ?? 'Please write which song you will sing.'
         }
       }
     }
@@ -278,6 +286,7 @@ export default function Register() {
         return {
           track_id: e.trackId,
           selection_item_id: t?.requires_selection ? e.selectionItemId : null,
+          selection_detail: e.selectionDetail?.trim() || null,
         }
       }),
     }
@@ -747,7 +756,11 @@ export default function Register() {
                                 setEntries((prev) =>
                                   prev.map((e) =>
                                     e.trackId === t.id
-                                      ? { ...e, selectionItemId: picked ? null : o.id }
+                                      ? {
+                                          ...e,
+                                          selectionItemId: picked ? null : o.id,
+                                          selectionDetail: '',
+                                        }
                                       : e,
                                   ),
                                 )
@@ -777,7 +790,12 @@ export default function Register() {
                                     {o.subtitle}
                                   </span>
                                 ) : null}
-                                <SlotMeter item={o} className="mt-1.5" />
+                                {/* A cap of 99 on "Something else" is a
+                                    technicality, not information — showing
+                                    "99 left" next to it would be noise. */}
+                                {o.requires_detail ? null : (
+                                  <SlotMeter item={o} className="mt-1.5" />
+                                )}
                               </span>
                               {picked ? (
                                 <span className="grid size-6 shrink-0 place-items-center rounded-full bg-marigold-500 text-white">
@@ -788,6 +806,35 @@ export default function Register() {
                           )
                         })}
                       </div>
+
+                      {/* Only appears once a category is chosen, so the form
+                          stays short for the great majority who pick a song
+                          from the list. */}
+                      {(() => {
+                        const chosen = opts.find((o) => o.id === entry?.selectionItemId)
+                        if (!chosen?.requires_detail) return null
+                        return (
+                          <div className="mt-3 rounded-2xl border-2 border-marigold-300 bg-marigold-50 p-4">
+                            <Input
+                              label={chosen.detail_label ?? 'Which song will you sing?'}
+                              required
+                              value={entry?.selectionDetail ?? ''}
+                              onChange={(ev) =>
+                                setEntries((prev) =>
+                                  prev.map((x) =>
+                                    x.trackId === t.id
+                                      ? { ...x, selectionDetail: ev.target.value }
+                                      : x,
+                                  ),
+                                )
+                              }
+                              error={errors[`detail-${t.id}`]}
+                              placeholder="Write the name of the song"
+                              hint="So we can print the running order and tell the judges what is coming."
+                            />
+                          </div>
+                        )
+                      })()}
                     </div>
                   )
                 })

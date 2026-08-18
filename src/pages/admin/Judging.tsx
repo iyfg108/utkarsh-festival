@@ -71,7 +71,7 @@ export default function Judging() {
           classLevel: r.class_level,
           school: r.school_name,
           group: r.class_group,
-          selection: e.selection_item?.title ?? null,
+          selection: e.selection_detail?.trim() || e.selection_item?.title || null,
           score: e.score,
           outcome: e.outcome,
           award: e.award,

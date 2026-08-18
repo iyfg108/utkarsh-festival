@@ -99,6 +99,9 @@ export interface SelectionItem {
   notes: string | null
   max_slots: number
   taken_count: number
+  /** A category rather than one song — the student names the piece. */
+  requires_detail: boolean
+  detail_label: string | null
   is_active: boolean
   sort_order: number
 }
@@ -115,6 +118,8 @@ export interface SelectionAvailability {
   taken_count: number
   slots_left: number
   is_full: boolean
+  requires_detail: boolean
+  detail_label: string | null
   sort_order: number
 }
 
@@ -160,6 +165,7 @@ export interface RegistrationTrack {
   registration_id: string
   track_id: string
   selection_item_id: string | null
+  selection_detail: string | null
   team_name: string | null
   outcome: EntryOutcome
   score: number | null
@@ -246,6 +252,8 @@ export interface FestivalSettings {
 export interface EntryDraft {
   track_id: string
   selection_item_id?: string | null
+  /** The piece named, when the chosen item requires_detail. */
+  selection_detail?: string | null
   team_name?: string | null
   members?: { full_name: string; class_level?: number | null }[]
 }
@@ -300,7 +308,10 @@ export interface StatusResult {
     track_slug: string
     mode: EventMode
     event_date: string | null
+    /** The piece they named, or the catalogue title for ordinary songs. */
     selection: string | null
+    /** The list entry they picked, e.g. "Borgeet". */
+    selection_category?: string | null
     team_name: string | null
     outcome: EntryOutcome
     award: string | null

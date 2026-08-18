@@ -125,7 +125,7 @@ insert into tracks (
     '16:00', '18:00', '2026-08-28',
     1, 10, false, 1, 1,
     true, 'Song',
-    'At most 3 students may sing the same song, so the evening stays varied. Songs already taken are marked — pick another and you will stand out more anyway.',
+    'At most 3 students may sing the same song, so the evening stays varied. Songs already taken are marked — pick another and you will stand out more anyway. Prefer a Borgeet, or something not on the list? Choose it at the bottom and tell us which piece you will sing.',
     6
   )
 on conflict (slug) do update
@@ -493,6 +493,53 @@ select t.id, v.title, v.subtitle, v.cap, v.ord
    and not exists (
      select 1 from selection_items si where si.track_id = t.id and si.title = v.title
    );
+
+-- ---------------------------------------------------------------------------
+-- Two choices that are a category rather than one song.
+--
+-- Borgeet is the Assamese devotional tradition of Sankardeva and Madhavdeva —
+-- there are hundreds, so capping it at three would turn away singers for no
+-- reason. "Something else" is open by definition. Both ask the student to
+-- write which piece they will sing, so the running order and the judges know
+-- what is coming, and so two students are not unknowingly preparing the same
+-- song under the same label.
+--
+-- The caps are set high rather than removed because the column is `not null`
+-- and the oversubscription check needs a ceiling; these are far above any
+-- plausible turnout.
+-- ---------------------------------------------------------------------------
+insert into selection_items
+  (track_id, title, subtitle, max_slots, requires_detail, detail_label, sort_order)
+select t.id, v.title, v.subtitle, v.cap, true, v.label, v.ord
+  from tracks t
+  cross join (values
+    ('Borgeet',
+     'Sankardeva / Madhavdeva — the Assamese tradition',
+     12,
+     'Which Borgeet will you sing?',
+     30),
+    ('Something else — I will sing my own choice',
+     'Any bhajan or kirtan not on this list',
+     99,
+     'Which bhajan will you sing?',
+     31)
+  ) as v(title, subtitle, cap, label, ord)
+ where t.slug = 'devotional-bhajan'
+   and not exists (
+     select 1 from selection_items si where si.track_id = t.id and si.title = v.title
+   );
+
+-- Re-runnable: keep the two in step if the wording above is edited later.
+update selection_items si
+   set requires_detail = true,
+       detail_label = case
+         when si.title = 'Borgeet' then 'Which Borgeet will you sing?'
+         else 'Which bhajan will you sing?'
+       end
+  from tracks t
+ where t.id = si.track_id
+   and t.slug = 'devotional-bhajan'
+   and si.title in ('Borgeet', 'Something else — I will sing my own choice');
 
 -- ---------------------------------------------------------------------------
 -- Gallery — deliberately not seeded.
