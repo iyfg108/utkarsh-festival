@@ -62,11 +62,11 @@ insert into tracks (
   (
     'devotional-essay', 'Devotional Essay', 'Lekhana',
     'Say it in your own words.',
-    'A written essay on a devotional theme, handwritten at the temple. The topic is announced on the spot, so nothing can be prepared in advance and every student starts equal. Judged on thought, clarity and honesty rather than long words.',
+    'A written essay on a devotional theme, handwritten at the temple. The topics for your class are published below — on the day you are given one of them to write on, so you can think about them all beforehand without preparing an answer to memorise. Judged on thought, clarity and honesty rather than long words.',
     'scroll', 'indigo',
     array[
       'Held at ISKCON Ulubari on 23 August, 9 am to 11 am.',
-      'The topic is announced on the spot.',
+      'The topics for your class are listed below. On the day you are given one of them.',
       'Handwritten. Paper is provided — bring your own pen.',
       'Write in English, Hindi or Assamese, whichever you think in.',
       'Your own words only. No printed material, no phones, no help from adults.'
@@ -150,6 +150,315 @@ on conflict (slug) do update
       selection_help = excluded.selection_help,
       is_active = true,
       sort_order = excluded.sort_order;
+
+
+-- ---------------------------------------------------------------------------
+-- What each competition asks a student to prepare.
+--
+-- Essay topics and Gita verses, grouped by class band and rendered on the
+-- competition page. Held as JSON on the track rather than in the code so a
+-- topic can be reworded with one UPDATE and no redeploy.
+--
+-- Note the class bands here are 1-2 / 3-4 / 5-7 / 8-10, which is finer than
+-- the festival's A/B/C groups (1-4, 5-7, 8-10) used for the quiz and the day
+-- sheet. They are labelled by class rather than by letter on purpose, so a
+-- Class 3 student is never told they are in two different groups at once.
+--
+-- Vedabase paths were each checked against the live site. Two are not what you
+-- would guess: 10.12 alone is a 404 (the page is 10.12-13), and 2.62-63 has no
+-- combined page (they are two separate verses).
+-- ---------------------------------------------------------------------------
+
+update tracks set syllabus = $syllabus${
+  "kind": "topics",
+  "heading": "Essay topics",
+  "intro": "Find your class below. On the day you will be given one topic from your group's list to write on — so think about all of them, but do not memorise an answer.",
+  "groups": [
+    {
+      "label": "Class 1 to 2",
+      "note": "About 5 lines",
+      "items": [
+        {
+          "text": "Little Krishna and Yashoda Maiya"
+        },
+        {
+          "text": "How I celebrate Janmashtami"
+        },
+        {
+          "text": "A story my grandmother told me"
+        }
+      ]
+    },
+    {
+      "label": "Class 3 to 4",
+      "note": "A short paragraph",
+      "items": [
+        {
+          "text": "My favourite story about Lord Krishna"
+        },
+        {
+          "text": "My favourite person in the Ramayana, and why"
+        },
+        {
+          "text": "Why should we listen to our parents"
+        },
+        {
+          "text": "Helping others"
+        },
+        {
+          "text": "Lord Hanuman"
+        },
+        {
+          "text": "Respecting our elders"
+        }
+      ]
+    },
+    {
+      "label": "Class 5 to 7",
+      "note": "About one page",
+      "items": [
+        {
+          "text": "Krishna and his friends"
+        },
+        {
+          "text": "The story of Dhruva"
+        },
+        {
+          "text": "What makes a true friend — Krishna and Sudama"
+        },
+        {
+          "text": "What our festivals teach us"
+        },
+        {
+          "text": "The lesson I learnt from the story of Prahlada"
+        },
+        {
+          "text": "Why we should listen to our parents"
+        }
+      ]
+    },
+    {
+      "label": "Class 8 to 10",
+      "note": "One to two pages",
+      "items": [
+        {
+          "text": "Why spirituality is important in today's world"
+        },
+        {
+          "text": "Lessons I learnt from the Ramayana"
+        },
+        {
+          "text": "Being honest, and how I follow it in my life"
+        },
+        {
+          "text": "Why our festivals matter"
+        },
+        {
+          "text": "Is devotion the same thing as religion? Write what you actually think."
+        },
+        {
+          "text": "Is it always easy to tell the truth? Write about a time when it was hard."
+        },
+        {
+          "text": "What the Bhagavad-gita teaches me"
+        },
+        {
+          "text": "How can I inculcate divine qualities within me?"
+        },
+        {
+          "text": "How does social media affect our inner space and peace?"
+        }
+      ]
+    }
+  ]
+}$syllabus$::jsonb
+ where slug = 'devotional-essay';
+
+update tracks set syllabus = $syllabus${
+  "kind": "verses",
+  "heading": "Verses to learn",
+  "intro": "Find your class below and learn the number of verses shown. You may recite any verses from the Bhagavad-gita — these are our suggestions, chosen so the sounds suit your age. Tap any verse to read it on Vedabase with the Devanagari, word meanings and full translation.",
+  "groups": [
+    {
+      "label": "Class 1 to 2",
+      "note": "Learn any ONE verse",
+      "items": [
+        {
+          "ref": "BG 18.65",
+          "path": "18/65",
+          "text": "man-mana bhava mad-bhakto\nmad-yaji mam namaskuru\nmam evaisyasi satyam te\npratijane priyo 'si me",
+          "gist": "Think of Me, worship Me, bow to Me — and you will come to Me."
+        },
+        {
+          "ref": "BG 9.26",
+          "path": "9/26",
+          "text": "patram puspam phalam toyam\nyo me bhaktya prayacchati\ntad aham bhakty-upahrtam\nasnami prayatatmanah",
+          "gist": "A leaf, a flower, a fruit, water — offered with love, I accept it."
+        },
+        {
+          "ref": "BG 9.27",
+          "path": "9/27",
+          "text": "yat karosi yad asnasi\nyaj juhosi dadasi yat\nyat tapasyasi kaunteya\ntat kurusva mad-arpanam",
+          "gist": "Whatever you do, eat, offer or give — do it for Me."
+        },
+        {
+          "ref": "BG 1.1",
+          "path": "1/1",
+          "text": "dhrtarastra uvaca\ndharma-ksetre kuru-ksetre\nsamaveta yuyutsavah\nmamakah pandavas caiva\nkim akurvata sanjaya",
+          "gist": "The opening verse of the Gita — Dhritarashtra asks what happened on the field of Kurukshetra.",
+          "note": "The 'dhrtarastra uvaca' line may be left out by the youngest reciters."
+        },
+        {
+          "ref": "BG 10.12-13",
+          "path": "10/12-13",
+          "text": "param brahma param dhama\npavitram paramam bhavan\npurusam sasvatam divyam\nadi-devam ajam vibhum",
+          "gist": "Arjuna addresses Krishna as the supreme truth, the supreme abode, the purest, eternal and unborn.",
+          "note": "Vedabase shows this as the combined verse 10.12-13, so the page is longer than the lines above."
+        }
+      ]
+    },
+    {
+      "label": "Class 3 to 4",
+      "note": "Learn any TWO verses",
+      "items": [
+        {
+          "ref": "BG 4.7",
+          "path": "4/7",
+          "text": "yada yada hi dharmasya\nglanir bhavati bharata\nabhyutthanam adharmasya\ntadatmanam srjamy aham",
+          "gist": "Whenever dharma declines and adharma rises, I appear.",
+          "note": "Best learnt together with 4.8 — the two are one thought."
+        },
+        {
+          "ref": "BG 4.8",
+          "path": "4/8",
+          "text": "paritranaya sadhunam\nvinasaya ca duskrtam\ndharma-samsthapanarthaya\nsambhavami yuge yuge",
+          "gist": "To protect the good and re-establish dharma, I appear in every age."
+        },
+        {
+          "ref": "BG 5.29",
+          "path": "5/29",
+          "text": "bhoktaram yajna-tapasam\nsarva-loka-mahesvaram\nsuhrdam sarva-bhutanam\njnatva mam santim rcchati",
+          "gist": "Knowing Me as the friend of every living being, one attains peace.",
+          "note": "Many students already know this one — it is chanted before meals."
+        },
+        {
+          "ref": "BG 18.66",
+          "path": "18/66",
+          "text": "sarva-dharman parityajya\nmam ekam saranam vraja\naham tvam sarva-papebhyo\nmoksayisyami ma sucah",
+          "gist": "Give up all else and simply surrender to Me. Do not fear."
+        },
+        {
+          "ref": "BG 2.47",
+          "path": "2/47",
+          "text": "karmany evadhikaras te\nma phalesu kadacana\nma karma-phala-hetur bhur\nma te sango 'stv akarmani",
+          "gist": "You have a right to your work, but never to its results."
+        }
+      ]
+    },
+    {
+      "label": "Class 5 to 7",
+      "note": "Learn any THREE verses",
+      "items": [
+        {
+          "ref": "BG 2.13",
+          "path": "2/13",
+          "text": "dehino 'smin yatha dehe\nkaumaram yauvanam jara\ntatha dehantara-praptir\ndhiras tatra na muhyati",
+          "gist": "As the body passes from childhood to youth to age, so the soul passes to another body. The wise are not confused by this."
+        },
+        {
+          "ref": "BG 7.7",
+          "path": "7/7",
+          "text": "mattah parataram nanyat\nkincid asti dhananjaya\nmayi sarvam idam protam\nsutre mani-gana iva",
+          "gist": "Everything rests upon Me, as pearls are strung on a thread."
+        },
+        {
+          "ref": "BG 9.22",
+          "path": "9/22",
+          "text": "ananyas cintayanto mam\nye janah paryupasate\ntesam nityabhiyuktanam\nyoga-ksemam vahamy aham",
+          "gist": "For those who worship Me with undivided attention, I carry what they lack and preserve what they have."
+        },
+        {
+          "ref": "BG 3.21",
+          "path": "3/21",
+          "text": "yad yad acarati sresthas\ntat tad evetaro janah\nsa yat pramanam kurute\nlokas tad anuvartate",
+          "gist": "Whatever a great person does, others follow."
+        },
+        {
+          "ref": "BG 2.14",
+          "path": "2/14",
+          "text": "matra-sparsas tu kaunteya\nsitosna-sukha-duhkha-dah\nagamapayino 'nityas\ntams titiksasva bharata",
+          "gist": "Happiness and distress come and go like winter and summer. Learn to tolerate them."
+        },
+        {
+          "ref": "BG 2.27",
+          "path": "2/27",
+          "text": "jatasya hi dhruvo mrtyur\ndhruvam janma mrtasya ca\ntasmad apariharye 'rthe\nna tvam socitum arhasi",
+          "gist": "For one who is born, death is certain. Do not grieve over what cannot be avoided."
+        },
+        {
+          "ref": "BG 4.34",
+          "path": "4/34",
+          "text": "tad viddhi pranipatena\npariprasnena sevaya\nupadeksyanti te jnanam\njnaninas tattva-darsinah",
+          "gist": "Approach a teacher humbly, ask questions, and render service."
+        }
+      ]
+    },
+    {
+      "label": "Class 8 to 10",
+      "note": "Learn any FOUR verses",
+      "items": [
+        {
+          "ref": "BG 2.62",
+          "path": "2/62",
+          "text": "dhyayato visayan pumsah\nsangas tesupajayate\nsangat sanjayate kamah\nkamat krodho 'bhijayate",
+          "gist": "Dwelling on the senses breeds attachment; attachment breeds desire; desire breeds anger.",
+          "note": "Recite together with 2.63 as one chain. The two count as two verses."
+        },
+        {
+          "ref": "BG 2.63",
+          "path": "2/63",
+          "text": "krodhad bhavati sammohah\nsammohat smrti-vibhramah\nsmrti-bhramsad buddhi-naso\nbuddhi-nasat pranasyati",
+          "gist": "From anger comes delusion, then loss of memory, then loss of intelligence — and one falls."
+        },
+        {
+          "ref": "BG 2.20",
+          "path": "2/20",
+          "text": "na jayate mriyate va kadacin\nnayam bhutva bhavita va na bhuyah\najo nityah sasvato 'yam purano\nna hanyate hanyamane sarire",
+          "gist": "The soul is never born and never dies. It is not slain when the body is slain.",
+          "note": "Longer metre than the others — this one tests breath and pacing."
+        },
+        {
+          "ref": "BG 12.13-14",
+          "path": "12/13-14",
+          "text": "advesta sarva-bhutanam\nmaitrah karuna eva ca\nnirmamo nirahankarah\nsama-duhkha-sukhah ksami\n\nsantustah satatam yogi\nyatatma drdha-niscayah\nmayy arpita-mano-buddhir\nyo mad-bhaktah sa me priyah",
+          "gist": "The qualities of a devotee — friendly to all, free of ego, equal in joy and sorrow, and very dear to Krishna.",
+          "note": "Vedabase shows these as one combined verse. Counts as two."
+        },
+        {
+          "ref": "BG 6.5",
+          "path": "6/5",
+          "text": "uddhared atmanatmanam\nnatmanam avasadayet\natmaiva hy atmano bandhur\natmaiva ripur atmanah",
+          "gist": "Lift yourself by your own mind. The mind is your friend, and also your enemy."
+        },
+        {
+          "ref": "BG 15.15",
+          "path": "15/15",
+          "text": "sarvasya caham hrdi sannivisto\nmattah smrtir jnanam apohanam ca\nvedais ca sarvair aham eva vedyo\nvedanta-krd veda-vid eva caham",
+          "gist": "I am seated in everyone's heart; from Me come memory, knowledge and forgetfulness."
+        },
+        {
+          "ref": "BG 16.1-3",
+          "path": "16/1-3",
+          "text": "abhayam sattva-samsuddhir\njnana-yoga-vyavasthitih\ndanam damas ca yajnas ca\nsvadhyayas tapa arjavam\n\n(continues through 16.3)",
+          "gist": "The divine qualities — fearlessness, purity, charity, self-control, study, austerity and simplicity.",
+          "note": "Three verses in one, so this nearly fills the requirement by itself."
+        }
+      ]
+    }
+  ]
+}$syllabus$::jsonb
+ where slug = 'gita-shloka';
+
 
 -- ---------------------------------------------------------------------------
 -- Bhajans — 3 singers each, the maha-mantra a little more

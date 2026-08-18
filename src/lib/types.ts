@@ -50,8 +50,44 @@ export interface Track {
   requires_selection: boolean
   selection_label: string | null
   selection_help: string | null
+  /** Essay topics or Gita verses to prepare, grouped by class band. */
+  syllabus: Syllabus | null
   is_active: boolean
   sort_order: number
+}
+
+/**
+ * Reference material shown on a competition page — what the student has to
+ * prepare. Two shapes share one structure: `topics` is a plain list, `verses`
+ * carries Sanskrit and a link to the verse on Vedabase.
+ */
+export interface Syllabus {
+  kind: 'topics' | 'verses'
+  heading: string
+  intro?: string
+  groups: SyllabusGroup[]
+}
+
+export interface SyllabusGroup {
+  /** Labelled by class ("Class 5 to 7"), never by group letter — the festival's
+   *  A/B/C bands are coarser, and two numbering schemes would confuse students. */
+  label: string
+  /** How much to prepare, e.g. "Learn any THREE verses". */
+  note?: string
+  items: SyllabusItem[]
+}
+
+export interface SyllabusItem {
+  /** The topic, or the Sanskrit of the verse with newlines between lines. */
+  text: string
+  /** Verses only: the citation, e.g. "BG 2.13". */
+  ref?: string
+  /** A one-line meaning in plain English. */
+  gist?: string
+  /** Anything a student should know before choosing this one. */
+  note?: string
+  /** Verses only: Vedabase path segment, e.g. "2/13" or "12/13-14". */
+  path?: string
 }
 
 export interface SelectionItem {

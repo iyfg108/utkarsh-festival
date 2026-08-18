@@ -15,6 +15,7 @@ import {
   TrackIcon,
 } from '@/components/Icons'
 import { SectionDivider, SoftGlow } from '@/components/Decor'
+import { Syllabus } from '@/components/site/Syllabus'
 import { AvailabilityRow } from '@/components/site/SlotMeter'
 
 export default function CompetitionDetail() {
@@ -188,6 +189,13 @@ export default function CompetitionDetail() {
           ) : null}
         </div>
       </section>
+
+      {/* ============================================================ prepare */}
+      {track.syllabus && track.syllabus.groups?.length ? (
+        <section className="mx-auto max-w-5xl px-4 pb-20 sm:px-6 lg:px-8">
+          <Syllabus data={track.syllabus} accentKey={track.accent} />
+        </section>
+      ) : null}
 
       {/* ======================================================== availability */}
       {track.requires_selection ? (

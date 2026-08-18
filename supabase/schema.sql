@@ -99,6 +99,12 @@ create table if not exists tracks (
   requires_selection boolean not null default false,
   selection_label    text,
   selection_help     text,
+  -- What a student has to prepare: essay topics, or the Gita verses to learn,
+  -- grouped by class band. Kept as JSON rather than its own table because it is
+  -- read-only reference material rendered as one block — nothing joins to it,
+  -- and holding it here means changing a topic is one UPDATE with no redeploy.
+  -- Shape: { kind, heading, intro, groups: [{ label, note, items: [...] }] }
+  syllabus           jsonb,
   is_active          boolean not null default true,
   sort_order         int not null default 0,
   created_at         timestamptz not null default now(),
@@ -140,6 +146,10 @@ exception when duplicate_column then null; end $$;
 
 do $$ begin
   alter table tracks add column registration_closes_at date;
+exception when duplicate_column then null; end $$;
+
+do $$ begin
+  alter table tracks add column syllabus jsonb;
 exception when duplicate_column then null; end $$;
 
 create index if not exists selection_items_track_idx

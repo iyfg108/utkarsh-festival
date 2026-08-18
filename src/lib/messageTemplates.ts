@@ -66,7 +66,7 @@ Your first Utkarsh competition is on {{online_date}} at {{venue}}, 9 am to 11 am
 You are entered in: {{competitions}}
 Your registration code: {{code}}
 
-Please come 15 minutes early so we can seat you with your group. The quiz is answered on a device, but you attempt it here at the temple — devices are provided, so bring nothing but yourself.
+Please come 15 minutes early so we can seat you with your group. The quiz is answered on a phone, but you attempt it here at the temple, so bring a charged phone with internet.
 
 Good luck!
 Team Utkarsh, ISKCON Guwahati`,
@@ -76,7 +76,7 @@ Your first Utkarsh competition is on {{online_date}}, 9–11 am at {{venue}}.
 Entered in: {{competitions}}
 Code: {{code}}
 
-Please come 15 min early. Devices are provided for the quiz.
+Please come 15 min early. Bring a charged phone with internet for the quiz.
 
 Good luck!`,
     hint: 'Everything is at the temple — no joining link needed.',
