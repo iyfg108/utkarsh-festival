@@ -41,10 +41,7 @@ def groups_html(data: dict) -> str:
         )
         out.append(
             f"""      <div class="grp">
-        <div class="grp-head">
-          <span class="grp-name">{g['label']}</span>
-          <span class="grp-note">{g.get('note', '')}</span>
-        </div>
+        <div class="grp-name">{g['label']}</div>
         <div class="refs">{chips}</div>
       </div>"""
         )
@@ -77,26 +74,6 @@ def leaf(data: dict) -> str:
     <div class="section-label">Selected verses for reference</div>
 
 {groups_html(data)}
-
-    <div class="section-label">How you are judged</div>
-    <div class="judged">
-      <span><b>Pronunciation</b> &mdash; carries the most weight</span>
-      <span><b>Rhythm</b> and flow</span>
-      <span><b>Memory</b> &mdash; recited without a book or phone</span>
-      <span><b>Feeling</b> you bring to the verse</span>
-    </div>
-    <p class="judged-note">
-      You may be asked the meaning of a verse in one or two lines, so learn what it says
-      as well as how it sounds.
-    </p>
-
-    <div class="section-label">My verses</div>
-    <div class="mine">
-      <div class="line"></div>
-      <div class="line"></div>
-      <div class="line"></div>
-      <div class="line"></div>
-    </div>
 
     <div class="foot">
       <span>Full text of every verse: <b>{SITE}</b></span>
@@ -259,8 +236,8 @@ html, body {
 
 /* --------------------------------------------------------------- groups */
 .section-label {
-  margin-top: 4mm;
-  margin-bottom: 2.5mm;
+  margin-top: 6mm;
+  margin-bottom: 4mm;
   font-size: 2.2mm;
   font-weight: 800;
   letter-spacing: 0.6mm;
@@ -270,84 +247,33 @@ html, body {
   padding-bottom: 1mm;
 }
 
-.grp { margin-bottom: 3.4mm; }
-
-.grp-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 2mm;
-  margin-bottom: 1.8mm;
-}
+.grp { margin-bottom: 5.5mm; }
 
 .grp-name {
-  font-size: 3.2mm;
+  font-size: 4.2mm;
   font-weight: 800;
   color: var(--ink);
-}
-
-.grp-note {
-  font-size: 2.2mm;
-  font-weight: 700;
-  color: #fff;
-  background: var(--navy);
-  padding: 0.6mm 1.8mm;
-  border-radius: 1mm;
-  white-space: nowrap;
+  margin-bottom: 3mm;
 }
 
 .refs {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5mm;
+  gap: 2.2mm;
 }
 
+/* With the tags and the two lower blocks gone, the verse numbers ARE the
+   leaflet — so they are set large enough to read at arm's length rather than
+   sized to leave room for things that are no longer here. */
 .ref {
-  border: 0.35mm solid var(--navy);
-  border-radius: 1mm;
-  padding: 1mm 2mm;
-  font-size: 2.7mm;
+  border: 0.4mm solid var(--navy);
+  border-radius: 1.2mm;
+  padding: 2mm 3.2mm;
+  font-size: 3.6mm;
   font-weight: 700;
   color: var(--navy);
   background: var(--faint);
   white-space: nowrap;
-}
-
-/* ----------------------------------------------------------------- judged */
-.judged {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.6mm 3mm;
-  font-size: 2.5mm;
-  color: #3d4770;
-}
-
-.judged span { padding-left: 3mm; position: relative; }
-
-.judged span::before {
-  content: "";
-  position: absolute;
-  left: 0; top: 1.1mm;
-  width: 1.4mm; height: 1.4mm;
-  border-radius: 50%;
-  background: var(--pink);
-}
-
-.judged-note {
-  margin-top: 2.5mm;
-  font-size: 2.3mm;
-  line-height: 1.45;
-  color: #6a7396;
-}
-
-/* ------------------------------------------------------------------- mine */
-/* Somewhere to write the verses actually chosen — turns the leaflet from
-   something read once into something carried to the temple. */
-.mine { display: flex; flex-direction: column; gap: 6mm; }
-
-.mine .line {
-  border-bottom: 0.3mm solid var(--rule);
-  height: 0;
 }
 
 /* ------------------------------------------------------------------ foot */
