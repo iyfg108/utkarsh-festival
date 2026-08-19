@@ -95,7 +95,7 @@ export default function Dashboard() {
   return (
     <>
       <AdminHeader
-        title={`Namaste, ${admin?.full_name?.split(' ')[0] ?? 'friend'}`}
+        title={`Hare Krishna, ${admin?.full_name?.split(' ')[0] ?? 'Prabhuji'}`}
         subtitle="A live view of how the festival is filling up."
       />
 
