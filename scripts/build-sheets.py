@@ -55,11 +55,18 @@ class Col:
 
 
 def parse_date(raw):
-    """The admin CSV writes '3 Feb 2014' (en-IN); accept the obvious others too."""
-    raw = (raw or '').strip()
+    """
+    The admin CSV writes dates the way en-IN does: '3 Feb 2014'.
+
+    September comes out as 'Sept', which is four letters and so does not match
+    %b — every September birthday silently lost its age until this normalised
+    it. Trailing full stops get the same treatment.
+    """
+    raw = (raw or '').strip().rstrip('.')
     if not raw or raw == '—':
         return None
-    for fmt in ('%d %b %Y', '%d %B %Y', '%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+    raw = re.sub(r'\bSept\b', 'Sep', raw, flags=re.I)
+    for fmt in ('%d %b %Y', '%d %B %Y', '%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%d.%m.%Y'):
         try:
             return dt.datetime.strptime(raw, fmt).date()
         except ValueError:
@@ -69,7 +76,7 @@ def parse_date(raw):
 
 def age_on(dob, on):
     if not dob:
-        return ''
+        return '?'
     return on.year - dob.year - ((on.month, on.day) < (dob.month, dob.day))
 
 
