@@ -31,6 +31,7 @@ import {
 import {
   CheckIcon,
   MailIcon,
+  PhoneIcon,
   SearchIcon,
   WhatsAppIcon,
 } from '@/components/Icons'
@@ -148,19 +149,28 @@ export default function Messages() {
     })
   }, [rows, segment, q, trackId, firstDay, secondDay])
 
-  /** Reachable on the chosen channel, and not already done (if skipping). */
-  const targets = useMemo(() => {
-    return inSegment.filter((r) => {
-      const reachable = channel === 'email' ? Boolean(r.email?.trim()) : Boolean(r.whatsapp?.trim())
-      if (!reachable) return false
-      if (skipDone && alreadySent.has(r.id)) return false
-      return true
-    })
-  }, [inSegment, channel, skipDone, alreadySent])
+  /**
+   * Everyone still to be contacted. Deliberately includes students with no
+   * WhatsApp number and no email: they used to be filtered out of the list
+   * entirely, which meant the people most likely to be missed were the ones
+   * you could not see. They are listed with the guardian's phone and a Call
+   * button instead, and can be ticked off the same way.
+   */
+  const listed = useMemo(
+    () => inSegment.filter((r) => !(skipDone && alreadySent.has(r.id))),
+    [inSegment, skipDone, alreadySent],
+  )
 
-  const unreachable = inSegment.length - inSegment.filter((r) =>
-    channel === 'email' ? Boolean(r.email?.trim()) : Boolean(r.whatsapp?.trim()),
-  ).length
+  /** Reachable on the chosen channel — who a bulk email can actually go to. */
+  const targets = useMemo(
+    () =>
+      listed.filter((r) =>
+        channel === 'email' ? Boolean(r.email?.trim()) : Boolean(r.whatsapp?.trim()),
+      ),
+    [listed, channel],
+  )
+
+  const unreachable = listed.length - targets.length
 
   const needsLink = /\{\{\s*link\s*\}\}/.test(channel === 'email' ? body : waBody)
 
@@ -426,8 +436,9 @@ export default function Messages() {
             {unreachable > 0 ? (
               <p className="mt-3 rounded-2xl border border-marigold-200 bg-marigold-50 px-4 py-2.5 text-[13px] text-marigold-900">
                 {unreachable} in this group {unreachable === 1 ? 'has' : 'have'} no{' '}
-                {channel === 'email' ? 'email address' : 'WhatsApp number'} — try the other channel
-                for them.
+                {channel === 'email' ? 'email address' : 'WhatsApp number'}. They are still in the
+                list below with a <strong>Call</strong> button and the guardian&rsquo;s number —
+                ring them, then press <strong>Mark</strong> so nobody rings them twice.
               </p>
             ) : null}
 
@@ -476,15 +487,21 @@ export default function Messages() {
             <p className="mt-4 rounded-xl bg-night-950/4 px-3 py-2 text-[12px] text-night-950/60">
               <strong className="text-night-950">{rows.length}</strong> registered ·{' '}
               <strong className="text-night-950">{inSegment.length}</strong> in this group ·{' '}
-              <strong className="text-night-950">{inSegment.length - unreachable}</strong> reachable
-              on {channel === 'email' ? 'email' : 'WhatsApp'} ·{' '}
-              <strong className="text-night-950">{targets.length}</strong> still to send
+              <strong className="text-night-950">{listed.length}</strong> still to contact ·{' '}
+              <strong className="text-night-950">{targets.length}</strong> on{' '}
+              {channel === 'email' ? 'email' : 'WhatsApp'}
+              {unreachable > 0 ? (
+                <>
+                  {' · '}
+                  <strong className="text-marigold-700">{unreachable}</strong> to call
+                </>
+              ) : null}
             </p>
 
             {/* the list */}
             {rows.length === 0 ? (
               <AccessDiagnostic context="students" />
-            ) : targets.length === 0 ? (
+            ) : listed.length === 0 ? (
               <EmptyState
                 className="mt-5"
                 title={
@@ -502,19 +519,60 @@ export default function Messages() {
               />
             ) : (
               <ul className="mt-4 divide-y divide-night-950/6">
-                {targets.slice(0, 200).map((r) => {
+                {listed.slice(0, 200).map((r) => {
                   const done = alreadySent.has(r.id)
+                  const onChannel = channel === 'email' ? r.email?.trim() : r.whatsapp?.trim()
+                  // Fall back to the guardian's number so nobody is invisible.
+                  const phone = r.whatsapp?.trim() || r.guardian_phone
                   return (
                     <li key={r.id} className="flex items-center gap-3 py-2.5">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-night-950">{r.full_name}</p>
                         <p className="truncate text-[12px] text-night-950/45">
-                          {r.reg_code} ·{' '}
-                          {channel === 'email' ? r.email : r.whatsapp}
+                          {r.reg_code} · {onChannel || phone}
+                          {!onChannel ? (
+                            <span className="ml-1.5 font-bold text-marigold-700">
+                              no {channel === 'email' ? 'email' : 'WhatsApp'} — call instead
+                            </span>
+                          ) : null}
                         </p>
                       </div>
 
-                      {channel === 'whatsapp' ? (
+                      {/*
+                        Someone with no number on this channel still has to be
+                        reached, so they get a Call button rather than being
+                        hidden. Ticking it off works the same either way.
+                      */}
+                      {!onChannel ? (
+                        done ? (
+                          <button
+                            type="button"
+                            onClick={() => undoWaSent(r)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-[13px] font-bold text-emerald-700"
+                          >
+                            <CheckIcon className="size-3.5" strokeWidth={3} />
+                            Done
+                          </button>
+                        ) : (
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <a
+                              href={`tel:${phone.replace(/[^0-9+]/g, '')}`}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-night-950 px-3 py-1.5 text-[13px] font-bold text-white transition hover:bg-night-900"
+                            >
+                              <PhoneIcon className="size-3.5" />
+                              Call
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => void markWaSent(r)}
+                              title="Mark as done once you have spoken to them"
+                              className="rounded-xl border border-night-950/12 px-2.5 py-1.5 text-[13px] font-bold text-night-950/60 transition hover:bg-night-950/5"
+                            >
+                              Mark
+                            </button>
+                          </div>
+                        )
+                      ) : channel === 'whatsapp' ? (
                         done ? (
                           <button
                             type="button"
@@ -547,9 +605,10 @@ export default function Messages() {
               </ul>
             )}
 
-            {targets.length > 200 ? (
+            {listed.length > 200 ? (
               <p className="mt-3 text-[12px] text-night-950/45">
-                Showing the first 200. Email sends to all {targets.length}.
+                Showing the first 200 of {listed.length}. A bulk email still goes to all{' '}
+                {targets.length} with an address.
               </p>
             ) : null}
           </section>
