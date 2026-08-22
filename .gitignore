@@ -18,3 +18,4 @@ yarn-error.log*
 # Generated judging/counter sheets — these hold student names, phone numbers
 # and guardian contacts once built from a real export. Never commit them.
 sheets/
+utkarsh-judges-verse-helper.pdf
