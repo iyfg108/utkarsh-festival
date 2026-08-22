@@ -208,20 +208,40 @@ ESSAY_CRITERIA = [
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--csv', help='registrations export from the admin portal')
-    ap.add_argument('--date', default='24 August 2026', help='date printed on the sheets')
+    ap.add_argument('--csv', nargs='?', const='auto',
+                    help='registrations export from the admin portal; '
+                         'pass --csv with no path to pick the newest one in ~/Downloads')
+    ap.add_argument('--date', default='23 August 2026', help='date printed on the sheets')
     ap.add_argument('--spot', type=int, default=25, help='blank rows for spot registrations')
     ap.add_argument('--out', default='sheets', help='output directory')
     args = ap.parse_args()
 
-    today = dt.date(2026, 8, 24)
+    today = dt.date(2026, 8, 23)
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+
+    # Finding the export by hand is the fiddly step on a busy morning, so
+    # --csv with no path just takes the newest likely-looking one.
+    if args.csv == 'auto':
+        downloads = pathlib.Path.home() / 'Downloads'
+        found = sorted(downloads.glob('*.csv'), key=lambda f: f.stat().st_mtime, reverse=True)
+        found = [f for f in found if re.search(r'reg|utkarsh|export', f.name, re.I)] or found
+        if not found:
+            sys.exit(f'No CSV found in {downloads}. Export one from the admin portal first.')
+        args.csv = str(found[0])
+        print(f'using {args.csv}')
 
     records = []
     if args.csv:
         with open(args.csv, newline='', encoding='utf-8-sig') as fh:
             records = list(csv.DictReader(fh))
+        if not records:
+            print('WARNING: that CSV has no data rows — the sheets will come out blank.')
+        else:
+            missing = [c for c in ('Name', 'Class', 'School') if c not in records[0]]
+            if missing:
+                print(f'WARNING: the CSV is missing columns {missing} — re-export with all '
+                      f'columns ticked, or those cells will be empty.')
 
     def get(rec, *names):
         for n in names:
