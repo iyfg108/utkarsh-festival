@@ -548,7 +548,8 @@ export default function Messages() {
                           <button
                             type="button"
                             onClick={() => undoWaSent(r)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-[13px] font-bold text-emerald-700"
+                            title="Ticked off. Press again to undo."
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-[13px] font-bold text-emerald-700 transition hover:bg-rose-50 hover:text-rose-700"
                           >
                             <CheckIcon className="size-3.5" strokeWidth={3} />
                             Done
@@ -577,13 +578,14 @@ export default function Messages() {
                           <button
                             type="button"
                             onClick={() => undoWaSent(r)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-[13px] font-bold text-emerald-700"
+                            title="Marked as sent. Press again to undo."
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-[13px] font-bold text-emerald-700 transition hover:bg-rose-50 hover:text-rose-700"
                           >
                             <CheckIcon className="size-3.5" strokeWidth={3} />
                             Sent
                           </button>
                         ) : (
-                          <div className="flex shrink-0 gap-1.5">
+                          <div className="flex shrink-0 items-center gap-1.5">
                             <a
                               href={waLink(r)}
                               target="_blank"
@@ -594,6 +596,19 @@ export default function Messages() {
                               <WhatsAppIcon className="size-3.5" />
                               Open
                             </a>
+                            {/*
+                              For a message sent some other way — from a phone,
+                              or by someone else in the room. Opening WhatsApp
+                              just to tick the box would be the wrong shape.
+                            */}
+                            <button
+                              type="button"
+                              onClick={() => void markWaSent(r)}
+                              title="Mark as sent without opening WhatsApp"
+                              className="rounded-xl border border-night-950/12 px-2.5 py-1.5 text-[13px] font-bold text-night-950/60 transition hover:bg-night-950/5"
+                            >
+                              Mark
+                            </button>
                           </div>
                         )
                       ) : done ? (
