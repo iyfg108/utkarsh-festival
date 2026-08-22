@@ -186,6 +186,29 @@ def yes_no(ws, head_row, first_row, last_row, col):
 
 
 # ── Column sets ───────────────────────────────────────────────────────────────
+# The three class bands the competitions are actually run and judged in. Each
+# gets its own tab, so a spot registration is added to the sheet its group is
+# already on rather than at the bottom of one long mixed list.
+GROUPS = [('A', 'Class 1 to 4', 1, 4),
+          ('B', 'Class 5 to 7', 5, 7),
+          ('C', 'Class 8 to 10', 8, 10)]
+
+
+def group_of(row):
+    """Prefer the group the portal recorded; fall back to the class number."""
+    g = str(row.get('Group') or '').strip().upper()
+    if g in ('A', 'B', 'C'):
+        return g
+    try:
+        c = int(str(row.get('Class') or '').strip())
+    except ValueError:
+        return None
+    for code, _, lo, hi in GROUPS:
+        if lo <= c <= hi:
+            return code
+    return None
+
+
 IDENT = lambda: [
     Col('S.No', 5, align='center'),
     Col('Reg Code', 11, align='center'),
@@ -291,6 +314,47 @@ def main():
 
     made = []
 
+    def judging_workbook(filename, key_prefix, title, subtitle, cols, rows,
+                         score_cols=None, total_col=None, present_col=None):
+        """
+        One workbook, one tab per group, same columns on each.
+
+        Anyone whose group cannot be worked out still gets a tab of their own
+        rather than being dropped — a missing student is far worse than an
+        untidy workbook.
+        """
+        by_group = {code: [] for code, _, _, _ in GROUPS}
+        stray = []
+        for r in rows:
+            g = group_of(r)
+            (by_group[g] if g else stray).append(r)
+
+        wb = Workbook()
+        first = True
+        counts = []
+        tabs = [(code, label, by_group[code]) for code, label, _, _ in GROUPS]
+        if stray:
+            tabs.append(('?', 'group not recorded', stray))
+
+        for code, label, grp_rows in tabs:
+            ws, hr, spot_from, last_row = build_sheet(
+                wb, key=f'Group {code}',
+                title=f'{title}  ·  Group {code}',
+                subtitle=f'{label}  ·  {subtitle}',
+                cols=cols, rows=grp_rows, spot_rows=args.spot,
+                first=first, event_date=args.date)
+            if score_cols:
+                total_formula(ws, hr, hr + 1, last_row, score_cols, total_col)
+            if present_col:
+                yes_no(ws, hr, hr + 1, last_row, present_col)
+            counts.append((code, len(grp_rows)))
+            first = False
+
+        path = out / filename
+        wb.save(path)
+        made.append((path, counts))
+        return path
+
     # ── 1. Gita Shloka ────────────────────────────────────────────────────────
     cols = IDENT() + [Col('Shloka(s)\nrecited', 15)]
     score_from = len(cols) + 1
@@ -298,15 +362,13 @@ def main():
     score_to = len(cols)
     cols += [Col('TOTAL\n/50', 9, align='center'), Col('Rank', 7, align='center'),
              Col('Judge remarks', 22)]
-    wb = Workbook()
-    ws, hr, spot_from, last_row = build_sheet(
-        wb, key='Gita Shloka', title='Gita Shloka Recitation — Judging Sheet',
-        subtitle=f'{args.date}  ·  ISKCON Guwahati, Ulubari  ·  each criterion out of 10, total out of 50'
-                 f'  ·  shaded rows are for spot registrations',
-        cols=cols, rows=ident_rows('Gita Shloka Recitation', 'Shloka(s)\nrecited'),
-        spot_rows=args.spot, first=True, event_date=args.date)
-    total_formula(ws, hr, hr + 1, last_row, list(range(score_from, score_to + 1)), score_to + 1)
-    p = out / 'gita-shloka-judging.xlsx'; wb.save(p); made.append((p, last_row - hr))
+    judging_workbook(
+        'gita-shloka-judging.xlsx', 'Gita Shloka',
+        'Gita Shloka Recitation — Judging Sheet',
+        f'{args.date}  ·  each criterion out of 10, total out of 50'
+        f'  ·  shaded rows are for spot registrations',
+        cols, ident_rows('Gita Shloka Recitation', 'Shloka(s)\nrecited'),
+        score_cols=list(range(score_from, score_to + 1)), total_col=score_to + 1)
 
     # ── 2. Vedic Quiz ─────────────────────────────────────────────────────────
     cols = IDENT() + [
@@ -318,16 +380,12 @@ def main():
         Col('Remarks', 24),
     ]
     r1 = len(IDENT()) + 2
-    wb = Workbook()
-    ws, hr, spot_from, last_row = build_sheet(
-        wb, key='Vedic Quiz', title='Vedic Quiz — Marks Sheet',
-        subtitle=f'{args.date}  ·  two rounds of 15 questions  ·  scores come from the quiz platform;'
-                 f' this sheet is the paper record  ·  shaded rows are for spot registrations',
-        cols=cols, rows=ident_rows('Vedic Quiz'),
-        spot_rows=args.spot, first=True, event_date=args.date)
-    total_formula(ws, hr, hr + 1, last_row, [r1, r1 + 1], r1 + 2)
-    yes_no(ws, hr, hr + 1, last_row, len(IDENT()) + 1)
-    p = out / 'vedic-quiz-marks.xlsx'; wb.save(p); made.append((p, last_row - hr))
+    judging_workbook(
+        'vedic-quiz-marks.xlsx', 'Vedic Quiz', 'Vedic Quiz — Marks Sheet',
+        f'{args.date}  ·  two rounds of 15 questions  ·  scores come from the quiz'
+        f' platform; this sheet is the paper record  ·  shaded rows are for spot registrations',
+        cols, ident_rows('Vedic Quiz'),
+        score_cols=[r1, r1 + 1], total_col=r1 + 2, present_col=len(IDENT()) + 1)
 
     # ── 3. Devotional Essay ───────────────────────────────────────────────────
     cols = IDENT() + [Col('Topic chosen', 20)]
@@ -336,15 +394,13 @@ def main():
     score_to = len(cols)
     cols += [Col('TOTAL\n/50', 9, align='center'), Col('Rank', 7, align='center'),
              Col('Judge remarks', 22)]
-    wb = Workbook()
-    ws, hr, spot_from, last_row = build_sheet(
-        wb, key='Devotional Essay', title='Devotional Essay — Judging Sheet',
-        subtitle=f'{args.date}  ·  each criterion out of 10, total out of 50'
-                 f'  ·  shaded rows are for spot registrations',
-        cols=cols, rows=ident_rows('Devotional Essay', 'Topic chosen'),
-        spot_rows=args.spot, first=True, event_date=args.date)
-    total_formula(ws, hr, hr + 1, last_row, list(range(score_from, score_to + 1)), score_to + 1)
-    p = out / 'devotional-essay-judging.xlsx'; wb.save(p); made.append((p, last_row - hr))
+    judging_workbook(
+        'devotional-essay-judging.xlsx', 'Devotional Essay',
+        'Devotional Essay — Judging Sheet',
+        f'{args.date}  ·  each criterion out of 10, total out of 50'
+        f'  ·  shaded rows are for spot registrations',
+        cols, ident_rows('Devotional Essay', 'Topic chosen'),
+        score_cols=list(range(score_from, score_to + 1)), total_col=score_to + 1)
 
     # ── 4. Registration counter ───────────────────────────────────────────────
     TRACKS = ['Vedic Quiz', 'Gita Shloka Recitation', 'Devotional Essay',
@@ -415,11 +471,19 @@ def main():
     ws.page_setup.fitToWidth = 2
     ws.print_title_cols = 'A:C'
 
-    p = out / 'registration-counter.xlsx'; wb.save(p); made.append((p, last_row - hr))
+    p = out / 'registration-counter.xlsx'; wb.save(p)
+    made.append((p, [('all', len(rows))]))
 
     print(f'students from CSV: {len(records)}' if args.csv else 'no CSV given — blank sheets')
-    for path, rowcount in made:
-        print(f'  {str(path):<44} {rowcount} rows')
+    for path, counts in made:
+        detail = '  '.join(f'{c}:{n}' for c, n in counts)
+        print(f'  {path.name:<32} {sum(n for _, n in counts):>3} students   {detail}')
+    if args.csv:
+        # A student who reaches no sheet is the one failure that matters here.
+        placed = {c for _, counts in made for c, _ in counts}
+        if '?' in placed:
+            print('\n  NOTE: some students had no group recorded and are on a '
+                  '"Group ?" tab — check their class.')
 
 
 if __name__ == '__main__':
