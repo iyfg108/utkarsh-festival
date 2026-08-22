@@ -26,6 +26,21 @@ import {
 } from '@/components/ui/Primitives'
 import { ClipboardIcon, DownloadIcon, SearchIcon, TrackIcon } from '@/components/Icons'
 
+interface ExportColumn {
+  key: string
+  label: string
+  /** Grouping shown in the picker; competitions are listed together. */
+  group?: string
+  value: (r: RegistrationRow) => unknown
+}
+
+const EXPORT_COLUMNS_KEY = 'utkarsh-export-columns'
+
+/** What a desk needs to find a student and take their money. */
+const ESSENTIAL_COLUMNS = [
+  'code', 'name', 'class', 'group', 'school', 'guardian_phone', 'whatsapp', 'fee', 'paid',
+]
+
 export default function Registrations() {
   const { data, loading, error, reload } = useAsync(() => fetchRegistrations(), [])
   const { tracks } = useFestival()
@@ -67,64 +82,134 @@ export default function Registrations() {
     })
   }, [rows, q, trackId, payment, certificate])
 
+  /*
+    The export is built from a declared list of columns rather than an object
+    literal, so the organiser can choose which ones they want. Each competition
+    is its own column, which is what makes a category-wise sheet possible:
+    filter to Gita Shloka, untick everything else, and you get a list of just
+    those students.
+  */
+  const columns = useMemo<ExportColumn[]>(() => {
+    const base: ExportColumn[] = [
+      { key: 'code', label: 'Registration code', value: (r) => r.reg_code },
+      { key: 'name', label: 'Name', value: (r) => r.full_name },
+      { key: 'class', label: 'Class', value: (r) => r.class_level },
+      { key: 'group', label: 'Group', value: (r) => r.class_group },
+      { key: 'school', label: 'School', value: (r) => r.school_name },
+      { key: 'dob', label: 'Date of birth', value: (r) => formatDate(r.date_of_birth) },
+      { key: 'gender', label: 'Gender', value: (r) => r.gender },
+      { key: 'guardian', label: 'Guardian', value: (r) => r.guardian_name },
+      { key: 'guardian_phone', label: 'Guardian phone', value: (r) => r.guardian_phone },
+      { key: 'student_phone', label: 'Student phone', value: (r) => r.student_phone ?? '' },
+      { key: 'email', label: 'Email', value: (r) => r.email ?? '' },
+      { key: 'whatsapp', label: 'WhatsApp', value: (r) => r.whatsapp ?? '' },
+    ]
+
+    // A column per competition: the cell holds the song or "Yes".
+    const comp: ExportColumn[] = tracks.map((t) => ({
+      key: `track:${t.id}`,
+      label: t.name,
+      group: 'Competitions',
+      value: (r) => {
+        const entry = r.registration_tracks.find((e) => e.track_id === t.id)
+        if (!entry) return ''
+        return entry.selection_detail?.trim()
+          ? `${entry.selection_detail.trim()}${
+              entry.selection_item ? ` (${entry.selection_item.title})` : ''
+            }`
+          : (entry.selection_item?.title ?? 'Yes')
+      },
+    }))
+
+    const tail: ExportColumn[] = [
+      { key: 'fee', label: 'Fee', value: (r) => r.fee_amount },
+      {
+        key: 'method',
+        label: 'Payment method',
+        value: (r) => (r.payment_method ? PAYMENT_METHOD_LABEL[r.payment_method] : ''),
+      },
+      { key: 'paid', label: 'Paid', value: (r) => (r.payment_status === 'paid' ? 'YES' : 'NO') },
+      { key: 'paid_on', label: 'Paid on', value: (r) => (r.paid_at ? formatDate(r.paid_at, true) : '') },
+      {
+        key: 'payment_ref',
+        label: 'Payment ref',
+        value: (r) => r.razorpay_payment_id ?? r.upi_reference ?? '',
+      },
+      {
+        key: 'payment_status',
+        label: 'Payment status',
+        value: (r) => PAYMENT_STATUS_LABEL[r.payment_status],
+      },
+      { key: 'payment_note', label: 'Payment note', value: (r) => r.payment_notes ?? '' },
+      { key: 'attended', label: 'Attended', value: (r) => (r.attended ? 'YES' : 'NO') },
+      { key: 'certificate', label: 'Certificate', value: (r) => CERTIFICATE_LABEL[r.certificate_status] },
+      {
+        key: 'prizes',
+        label: 'Prizes',
+        value: (r) =>
+          r.registration_tracks
+            .filter((e) => e.award)
+            .map((e) => `${e.track?.name}: ${e.award}`)
+            .join('; '),
+      },
+      { key: 'registered_on', label: 'Registered on', value: (r) => formatDate(r.created_at) },
+    ]
+
+    return [...base, ...comp, ...tail]
+  }, [tracks])
+
+  /*
+    Which columns are ticked. Remembered per browser: an organiser who wants a
+    phone list is usually going to want it again, and re-ticking twenty boxes
+    each time is the sort of friction that ends in someone exporting the lot
+    and editing it in Excel.
+  */
+  const [chosen, setChosen] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(EXPORT_COLUMNS_KEY)
+      if (saved) return JSON.parse(saved) as string[]
+    } catch {
+      /* corrupt or unavailable — fall through to the default */
+    }
+    return []
+  })
+
+  // Empty means "not chosen yet", which is every column.
+  const activeKeys = chosen.length > 0 ? chosen : columns.map((c) => c.key)
+
+  function setColumns(keys: string[]) {
+    setChosen(keys)
+    try {
+      localStorage.setItem(EXPORT_COLUMNS_KEY, JSON.stringify(keys))
+    } catch {
+      /* private browsing — the choice just will not persist */
+    }
+  }
+
+  function toggleColumn(key: string) {
+    const next = activeKeys.includes(key)
+      ? activeKeys.filter((k) => k !== key)
+      : columns.map((c) => c.key).filter((k) => activeKeys.includes(k) || k === key)
+    setColumns(next)
+  }
+
   /**
-   * One row per student, with a column per competition. This is the sheet the
-   * organisers actually work from on the day, so it opens straight into Excel
-   * with everything needed to verify a payment and hand over a certificate.
+   * One row per student, one column per ticked field. This is the sheet the
+   * organisers work from on the day, so it opens straight into Excel.
    */
   function exportCsv() {
+    const active = columns.filter((c) => activeKeys.includes(c.key))
+    if (active.length === 0) return
+
     const flat = filtered.map((r) => {
-      const base: Record<string, unknown> = {
-        'Registration code': r.reg_code,
-        Name: r.full_name,
-        Class: r.class_level,
-        Group: r.class_group,
-        School: r.school_name,
-        'Date of birth': formatDate(r.date_of_birth),
-        Gender: r.gender,
-        Guardian: r.guardian_name,
-        'Guardian phone': r.guardian_phone,
-        'Student phone': r.student_phone ?? '',
-        Email: r.email ?? '',
-        WhatsApp: r.whatsapp ?? '',
-      }
-
-      // A yes/no column per competition keeps the printed sheet readable.
-      for (const t of tracks) {
-        const entry = r.registration_tracks.find((e) => e.track_id === t.id)
-        // The named piece is what the desk and the judges need; the list
-        // entry ("Borgeet") is kept alongside so the column still sorts.
-        base[t.name] = entry
-          ? entry.selection_detail?.trim()
-            ? `${entry.selection_detail.trim()}${
-                entry.selection_item ? ` (${entry.selection_item.title})` : ''
-              }`
-            : (entry.selection_item?.title ?? 'Yes')
-          : ''
-      }
-
-      base['Fee'] = r.fee_amount
-      base['Payment method'] = r.payment_method ? PAYMENT_METHOD_LABEL[r.payment_method] : ''
-      base['Paid'] = r.payment_status === 'paid' ? 'YES' : 'NO'
-      base['Paid on'] = r.paid_at ? formatDate(r.paid_at, true) : ''
-      base['Payment ref'] = r.razorpay_payment_id ?? r.upi_reference ?? ''
-      base['Payment status'] = PAYMENT_STATUS_LABEL[r.payment_status]
-      base['Payment note'] = r.payment_notes ?? ''
-      base['Attended'] = r.attended ? 'YES' : 'NO'
-      base['Certificate'] = CERTIFICATE_LABEL[r.certificate_status]
-      base['Prizes'] = r.registration_tracks
-        .filter((e) => e.award)
-        .map((e) => `${e.track?.name}: ${e.award}`)
-        .join('; ')
-      base['Registered on'] = formatDate(r.created_at)
-
-      return base
+      const row: Record<string, unknown> = {}
+      for (const col of active) row[col.label] = col.value(r)
+      return row
     })
 
-    downloadCsv(
-      `utkarsh-registrations-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCsv(flat),
-    )
+    const track = tracks.find((t) => t.id === trackId)
+    const name = track ? track.slug : 'registrations'
+    downloadCsv(`utkarsh-${name}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(flat))
   }
 
   const dueCount = filtered.filter((r) => r.payment_status !== 'paid').length
@@ -141,7 +226,7 @@ export default function Registrations() {
           <Button
             variant="outline"
             onClick={exportCsv}
-            disabled={filtered.length === 0}
+            disabled={filtered.length === 0 || activeKeys.length === 0}
             icon={<DownloadIcon className="size-4" />}
           >
             Export for Excel
@@ -182,6 +267,68 @@ export default function Registrations() {
             <option value="done">Certificate issued</option>
           </Select>
         </div>
+
+        {/* Which columns land in the spreadsheet. Collapsed, because most of
+            the time the answer is "all of them". */}
+        <details className="mt-3 rounded-2xl border border-night-950/10">
+          <summary className="cursor-pointer list-none px-4 py-3 text-[13px] font-bold text-night-950/70 [&::-webkit-details-marker]:hidden">
+            Columns in the export — {activeKeys.length} of {columns.length} selected
+          </summary>
+
+          <div className="border-t border-night-950/8 px-4 py-3">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setColumns(columns.map((c) => c.key))}
+                className="rounded-lg border border-night-950/12 px-2.5 py-1 text-[12px] font-bold text-night-950/70 transition hover:bg-night-950/5"
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                onClick={() => setColumns(ESSENTIAL_COLUMNS)}
+                className="rounded-lg border border-night-950/12 px-2.5 py-1 text-[12px] font-bold text-night-950/70 transition hover:bg-night-950/5"
+              >
+                Just the essentials
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setColumns([
+                    ...ESSENTIAL_COLUMNS,
+                    ...columns.filter((c) => c.group === 'Competitions').map((c) => c.key),
+                  ])
+                }
+                className="rounded-lg border border-night-950/12 px-2.5 py-1 text-[12px] font-bold text-night-950/70 transition hover:bg-night-950/5"
+              >
+                Essentials + competitions
+              </button>
+            </div>
+
+            <div className="grid gap-x-4 gap-y-1.5 sm:grid-cols-3">
+              {columns.map((col) => (
+                <label
+                  key={col.key}
+                  className="flex cursor-pointer items-center gap-2 text-[13px] text-night-950/75"
+                >
+                  <input
+                    type="checkbox"
+                    checked={activeKeys.includes(col.key)}
+                    onChange={() => toggleColumn(col.key)}
+                    className="size-4 rounded border-night-950/25 accent-marigold-600"
+                  />
+                  <span className="truncate">{col.label}</span>
+                </label>
+              ))}
+            </div>
+
+            {activeKeys.length === 0 ? (
+              <p className="mt-3 text-[12px] font-semibold text-rose-600">
+                Nothing selected — the export button stays disabled until you tick a column.
+              </p>
+            ) : null}
+          </div>
+        </details>
       </div>
 
       {filtered.length === 0 ? (

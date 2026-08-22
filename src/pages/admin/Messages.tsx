@@ -10,7 +10,7 @@ import {
   unlogMessage,
 } from '@/lib/queries'
 import { friendlyError } from '@/lib/supabase'
-import { cn, formatLongDate, formatMoney } from '@/lib/utils'
+import { cn, formatLongDate, formatMoney, formatTime, formatTimeRange } from '@/lib/utils'
 import {
   SEGMENTS,
   TEMPLATES,
@@ -37,7 +37,7 @@ import {
 const EMAIL_BATCH = 40
 
 export default function Messages() {
-  const { settings } = useFestival()
+  const { settings, tracks } = useFestival()
   const toast = useToast()
   const regs = useAsync(() => fetchRegistrations(), [])
   const log = useAsync(() => fetchMessageLog(), [])
@@ -50,6 +50,8 @@ export default function Messages() {
   const [link, setLink] = useState('')
   const [channel, setChannel] = useState<'email' | 'whatsapp'>('email')
   const [q, setQ] = useState('')
+  /** '' = every competition. Otherwise only students who entered this one. */
+  const [trackId, setTrackId] = useState('')
   const [sending, setSending] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [skipDone, setSkipDone] = useState(true)
@@ -57,6 +59,8 @@ export default function Messages() {
   const event = settings?.event
   const rows = regs.data ?? []
   const template = TEMPLATES.find((t) => t.key === templateKey) ?? TEMPLATES[0]
+
+  const selectedTrack = tracks.find((t) => t.id === trackId) ?? null
 
   /** Event-level merge values, the same for every student. */
   const sharedFields = useMemo(
@@ -66,8 +70,20 @@ export default function Messages() {
       venue: event?.venue ?? '',
       upi_id: settings?.payment.upi_id ?? '',
       link,
+      /*
+        Only meaningful once a single competition is chosen. Left blank
+        otherwise, which renders as nothing rather than as a stray
+        placeholder — see renderTemplate.
+      */
+      competition: selectedTrack?.name ?? '',
+      competition_date: selectedTrack?.event_date
+        ? formatLongDate(selectedTrack.event_date)
+        : '',
+      competition_time:
+        formatTimeRange(selectedTrack?.start_time, selectedTrack?.end_time) ?? '',
+      report_time: formatTime(selectedTrack?.reporting_time) ?? '',
     }),
-    [event, settings, link],
+    [event, settings, link, selectedTrack],
   )
 
   function pickTemplate(key: string) {
@@ -119,13 +135,17 @@ export default function Messages() {
           break
       }
 
+      // One competition at a time: "Gita Shloka" should show the students who
+      // entered Gita Shloka and nobody else, so the message can name it.
+      if (trackId && !r.registration_tracks.some((e) => e.track_id === trackId)) return false
+
       if (q.trim()) {
         const hay = `${r.full_name} ${r.reg_code} ${r.school_name}`.toLowerCase()
         if (!hay.includes(q.trim().toLowerCase())) return false
       }
       return true
     })
-  }, [rows, segment, q, firstDay, secondDay])
+  }, [rows, segment, q, trackId, firstDay, secondDay])
 
   /** Reachable on the chosen channel, and not already done (if skipping). */
   const targets = useMemo(() => {
@@ -266,6 +286,23 @@ export default function Messages() {
                 {SEGMENTS.map((s) => (
                   <option key={s.key} value={s.key}>
                     {s.label}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Competition"
+                value={trackId}
+                onChange={(e) => setTrackId(e.target.value)}
+                hint={
+                  selectedTrack
+                    ? `Only students entered in ${selectedTrack.name}. {{competition}} and its date, time and report time are available in the message.`
+                    : 'Every competition. Narrow to one to write a message about it.'
+                }
+              >
+                <option value="">All competitions</option>
+                {tracks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
                   </option>
                 ))}
               </Select>

@@ -5,6 +5,11 @@
  *   {{name}} {{first_name}} {{code}} {{amount}} {{competitions}}
  *   {{online_date}} {{venue_date}} {{venue}} {{upi_id}} {{link}}
  *
+ * And, when one competition is selected in the filter, that competition's own
+ * details — so a reminder can name a single event and its real time rather
+ * than listing everything the student entered:
+ *   {{competition}} {{competition_date}} {{competition_time}} {{report_time}}
+ *
  * Email renders these server-side (the Edge Function has the student data).
  * WhatsApp renders them in the browser, because the organiser needs to see the
  * finished text before tapping Send.
@@ -150,6 +155,31 @@ Your certificate: {{link}}
 
 Hope to see you again next year 🪔`,
     hint: 'Put the certificate link (or a folder link) in the Link field.',
+  },
+  {
+    key: 'competition_reminder',
+    label: 'One competition — reminder',
+    segment: 'everyone',
+    subject: 'Utkarsh: your {{competition}} is on {{competition_date}}',
+    body: `Hare Krishna {{first_name}},
+
+Your {{competition}} is on {{competition_date}}, {{competition_time}}, at {{venue}}.
+
+Please report by {{report_time}} — one hour before it starts.
+Your registration code: {{code}}
+
+Bring your code with you. Certificates, prizes and prasadam are given at the temple.
+
+Team Utkarsh, ISKCON Guwahati`,
+    whatsapp: `Hare Krishna {{first_name}}! 🙏
+
+Your *{{competition}}* is on {{competition_date}}, {{competition_time}}.
+Report by {{report_time}} at {{venue}}.
+
+Your code: {{code}}
+
+See you there!`,
+    hint: 'Pick one competition in the filter below — this message names it and uses its own time.',
   },
   {
     key: 'custom',
