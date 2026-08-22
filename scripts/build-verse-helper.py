@@ -39,14 +39,21 @@ def esc(t):
     return (t.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
 
 
+# 16.1-3 is three verses carrying one long list of qualities; a single line of
+# "meaning" under it flattens them rather than helping, so the sheet shows the
+# Sanskrit alone and lets the judge listen to it as the chain it is.
+NO_GIST = {'BG 16.1-3'}
+
+
 def verse_html(v):
     lines = '<br>'.join(esc(l) for l in v['text'].split('\n'))
     note = f'<div class="note">{esc(v["note"])}</div>' if v.get('note') else ''
+    gist = '' if v['ref'] in NO_GIST else f'<div class="gist">{esc(v["gist"])}</div>'
     return f"""
       <div class="verse">
         <div class="ref">{esc(v['ref'])}</div>
         <div class="sanskrit">{lines}</div>
-        <div class="gist">{esc(v['gist'])}</div>
+        {gist}
         {note}
       </div>"""
 
