@@ -16,6 +16,7 @@ import {
 import { fetchRegistrations } from '@/lib/queries'
 import type { RegistrationRow } from '@/lib/types'
 import { AdminHeader } from './AdminLayout'
+import { AccessDiagnostic } from './AccessDiagnostic'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Form'
 import {
@@ -331,7 +332,9 @@ export default function Registrations() {
         </details>
       </div>
 
-      {filtered.length === 0 ? (
+      {rows.length === 0 ? (
+        <AccessDiagnostic context="registrations" />
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={<ClipboardIcon className="size-12" />}
           title={rows.length === 0 ? 'No registrations yet' : 'Nothing matches those filters'}

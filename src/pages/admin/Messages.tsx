@@ -19,6 +19,7 @@ import {
 } from '@/lib/messageTemplates'
 import type { RegistrationRow } from '@/lib/types'
 import { AdminHeader } from './AdminLayout'
+import { AccessDiagnostic } from './AccessDiagnostic'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Form'
 import {
@@ -467,8 +468,23 @@ export default function Messages() {
               </p>
             )}
 
+            {/*
+              Where the students went. Four numbers that turn "the list is
+              empty" into a specific cause: nothing loaded at all is a
+              permissions problem, everything filtered out is not.
+            */}
+            <p className="mt-4 rounded-xl bg-night-950/4 px-3 py-2 text-[12px] text-night-950/60">
+              <strong className="text-night-950">{rows.length}</strong> registered ·{' '}
+              <strong className="text-night-950">{inSegment.length}</strong> in this group ·{' '}
+              <strong className="text-night-950">{inSegment.length - unreachable}</strong> reachable
+              on {channel === 'email' ? 'email' : 'WhatsApp'} ·{' '}
+              <strong className="text-night-950">{targets.length}</strong> still to send
+            </p>
+
             {/* the list */}
-            {targets.length === 0 ? (
+            {rows.length === 0 ? (
+              <AccessDiagnostic context="students" />
+            ) : targets.length === 0 ? (
               <EmptyState
                 className="mt-5"
                 title={
