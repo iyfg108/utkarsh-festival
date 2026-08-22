@@ -1,0 +1,399 @@
+#!/usr/bin/env python3
+"""
+Utkarsh 2026 — the paper the day actually runs on.
+
+Builds four Excel workbooks:
+
+  1. gita-shloka-judging.xlsx    judges' scoring sheet
+  2. vedic-quiz-marks.xlsx       roll + marks for both rounds
+  3. devotional-essay-judging.xlsx
+  4. registration-counter.xlsx   every student, every event, payment status
+
+Run it with no arguments and you get the same four sheets with no names in
+them — blank, numbered and printable, which is what you want if the laptop
+dies and the whole morning goes to pen and paper.
+
+With a CSV exported from the admin portal, the registered students are filled
+in and the blank rows are added underneath for spot registrations:
+
+    python3 scripts/build-sheets.py --csv ~/Downloads/registrations.csv
+
+Every sheet is landscape, fits one page wide, repeats its header on every
+printed page, and prints its gridlines — a judging sheet without gridlines is
+useless the moment someone writes in it.
+"""
+
+import argparse, csv, datetime as dt, pathlib, re, sys
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
+
+# ── House style ───────────────────────────────────────────────────────────────
+SAFFRON   = 'C1440E'
+INK       = '1F2933'
+BAND      = 'FDF3E3'   # header fill
+SPOT_FILL = 'F4F7FB'   # the blank spot-registration rows
+RULE      = 'B7BEC7'
+
+THIN = Side(style='thin', color=RULE)
+BOX  = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+
+TITLE_F  = Font(name='Calibri', size=16, bold=True, color=SAFFRON)
+SUB_F    = Font(name='Calibri', size=10, color='5A6672')
+HEAD_F   = Font(name='Calibri', size=10, bold=True, color=INK)
+CELL_F   = Font(name='Calibri', size=10, color=INK)
+WRAP_MID = Alignment(horizontal='center', vertical='center', wrap_text=True)
+LEFT_MID = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+
+
+class Col:
+    """One column: its heading, width, and whether judges write in it."""
+    def __init__(self, title, width=14, fill_in=False, align='left', note=None):
+        self.title, self.width, self.fill_in = title, width, fill_in
+        self.align, self.note = align, note
+
+
+def parse_date(raw):
+    """The admin CSV writes '3 Feb 2014' (en-IN); accept the obvious others too."""
+    raw = (raw or '').strip()
+    if not raw or raw == '—':
+        return None
+    for fmt in ('%d %b %Y', '%d %B %Y', '%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return dt.datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def age_on(dob, on):
+    if not dob:
+        return ''
+    return on.year - dob.year - ((on.month, on.day) < (dob.month, dob.day))
+
+
+def build_sheet(wb, *, key, title, subtitle, cols, rows, spot_rows, first, event_date):
+    ws = wb.active if first else wb.create_sheet()
+    ws.title = key
+
+    n = len(cols)
+    last = get_column_letter(n)
+
+    # ── Title band ────────────────────────────────────────────────────────────
+    ws.merge_cells(f'A1:{last}1')
+    ws['A1'] = f'UTKARSH 2026  ·  {title}'
+    ws['A1'].font = TITLE_F
+    ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[1].height = 26
+
+    ws.merge_cells(f'A2:{last}2')
+    ws['A2'] = subtitle
+    ws['A2'].font = SUB_F
+    ws['A2'].alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[2].height = 16
+
+    # Judge/counter signature line — every paper sheet needs to say who held it.
+    ws.merge_cells(f'A3:{last}3')
+    ws['A3'] = 'Judge / Volunteer name: ______________________________        '
+    ws['A3'].font = SUB_F
+    ws.row_dimensions[3].height = 18
+
+    HEAD_ROW = 5
+
+    for i, c in enumerate(cols, start=1):
+        cell = ws.cell(row=HEAD_ROW, column=i, value=c.title)
+        cell.font = HEAD_F
+        cell.fill = PatternFill('solid', fgColor=BAND)
+        cell.alignment = WRAP_MID
+        cell.border = BOX
+        ws.column_dimensions[get_column_letter(i)].width = c.width
+        if c.note:
+            cell.comment = None  # kept simple: notes live in the subtitle instead
+    ws.row_dimensions[HEAD_ROW].height = 34
+
+    # ── Body ──────────────────────────────────────────────────────────────────
+    r = HEAD_ROW + 1
+    for rec in rows:
+        for i, c in enumerate(cols, start=1):
+            cell = ws.cell(row=r, column=i, value=rec.get(c.title, ''))
+            cell.font = CELL_F
+            cell.border = BOX
+            cell.alignment = WRAP_MID if c.align == 'center' else LEFT_MID
+        ws.row_dimensions[r].height = 24
+        r += 1
+
+    spot_from = r
+    for _ in range(spot_rows):
+        for i, c in enumerate(cols, start=1):
+            cell = ws.cell(row=r, column=i)
+            cell.font = CELL_F
+            cell.border = BOX
+            cell.fill = PatternFill('solid', fgColor=SPOT_FILL)
+            cell.alignment = WRAP_MID if c.align == 'center' else LEFT_MID
+        ws.row_dimensions[r].height = 24
+        r += 1
+    last_row = r - 1
+
+    # Serial numbers run through the blanks too, so a half-filled sheet still
+    # tells you how many students are on it.
+    if cols and cols[0].title == 'S.No':
+        for i, rr in enumerate(range(HEAD_ROW + 1, last_row + 1), start=1):
+            ws.cell(row=rr, column=1, value=i).alignment = WRAP_MID
+
+    # ── Print setup: this is a paper artefact first ───────────────────────────
+    ws.page_setup.orientation = 'landscape'
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0          # as many pages tall as it needs
+    ws.print_options.gridLines = True
+    ws.print_options.horizontalCentered = True
+    ws.print_title_rows = f'{HEAD_ROW}:{HEAD_ROW}'
+    ws.page_margins.left = ws.page_margins.right = 0.3
+    ws.page_margins.top = ws.page_margins.bottom = 0.4
+    ws.freeze_panes = ws.cell(row=HEAD_ROW + 1, column=1)
+    ws.auto_filter.ref = f'A{HEAD_ROW}:{last}{last_row}'
+    ws.oddFooter.right.text = 'Page &P of &N'
+    ws.oddFooter.left.text = f'Utkarsh 2026 · {title} · {event_date}'
+    ws.oddFooter.left.size = 8
+    ws.oddFooter.right.size = 8
+    return ws, HEAD_ROW, spot_from, last_row
+
+
+def total_formula(ws, head_row, first_row, last_row, score_cols, total_col):
+    """Live SUM in the Total column, so a corrected score re-totals itself."""
+    a = get_column_letter(score_cols[0])
+    b = get_column_letter(score_cols[-1])
+    for r in range(first_row, last_row + 1):
+        c = ws.cell(row=r, column=total_col, value=f'=SUM({a}{r}:{b}{r})')
+        c.font = Font(name='Calibri', size=10, bold=True, color=INK)
+        c.alignment = WRAP_MID
+        c.border = BOX
+
+
+def yes_no(ws, head_row, first_row, last_row, col):
+    dv = DataValidation(type='list', formula1='"YES,NO"', allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add(f'{get_column_letter(col)}{first_row}:{get_column_letter(col)}{last_row}')
+
+
+# ── Column sets ───────────────────────────────────────────────────────────────
+IDENT = lambda: [
+    Col('S.No', 5, align='center'),
+    Col('Reg Code', 11, align='center'),
+    Col('Name', 21),
+    Col('Class', 6, align='center'),
+    Col('Group', 6, align='center'),
+    Col('School', 21),
+    Col('Age', 5, align='center'),
+]
+
+SHLOKA_CRITERIA = [
+    ('Pronunciation\n(Uchcharana)\n/10', 11),
+    ('Memory &\nAccuracy\n/10', 10),
+    ('Tone & Melody\n(Svara)\n/10', 11),
+    ('Confidence &\nPresentation\n/10', 11),
+    ('Overall\nImpression\n/10', 10),
+]
+
+ESSAY_CRITERIA = [
+    ('Content &\nUnderstanding\n/10', 12),
+    ('Language &\nGrammar\n/10', 11),
+    ('Structure &\nFlow\n/10', 10),
+    ('Originality &\nExpression\n/10', 11),
+    ('Handwriting &\nNeatness\n/10', 11),
+]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--csv', help='registrations export from the admin portal')
+    ap.add_argument('--date', default='24 August 2026', help='date printed on the sheets')
+    ap.add_argument('--spot', type=int, default=25, help='blank rows for spot registrations')
+    ap.add_argument('--out', default='sheets', help='output directory')
+    args = ap.parse_args()
+
+    today = dt.date(2026, 8, 24)
+    out = pathlib.Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+
+    records = []
+    if args.csv:
+        with open(args.csv, newline='', encoding='utf-8-sig') as fh:
+            records = list(csv.DictReader(fh))
+
+    def get(rec, *names):
+        for n in names:
+            if n in rec and str(rec[n]).strip() not in ('', '—'):
+                return str(rec[n]).strip()
+        return ''
+
+    def entered(rec, track_label):
+        return get(rec, track_label) != ''
+
+    def ident_rows(track_label=None, detail_col=None):
+        """
+        One row per student entered in `track_label`.
+
+        `detail_col` carries the student's own choice — which shloka, which
+        essay topic — through to the judge, who otherwise has to ask each
+        child at the microphone. The export writes a bare 'Yes' when there is
+        no choice stored, which is not a shloka, so it is dropped.
+        """
+        rows = []
+        for rec in records:
+            if track_label and not entered(rec, track_label):
+                continue
+            dob = parse_date(get(rec, 'Date of birth'))
+            row = {
+                'Reg Code': get(rec, 'Registration code'),
+                'Name': get(rec, 'Name'),
+                'Class': get(rec, 'Class'),
+                'Group': get(rec, 'Group'),
+                'School': get(rec, 'School'),
+                'Age': age_on(dob, today),
+                'Date of birth': get(rec, 'Date of birth'),
+            }
+            if detail_col and track_label:
+                choice = get(rec, track_label)
+                row[detail_col] = '' if choice.lower() == 'yes' else choice
+            rows.append(row)
+        rows.sort(key=lambda r: (str(r['Group']), str(r['Name']).lower()))
+        return rows
+
+    made = []
+
+    # ── 1. Gita Shloka ────────────────────────────────────────────────────────
+    cols = IDENT() + [Col('Shloka(s)\nrecited', 15)]
+    score_from = len(cols) + 1
+    cols += [Col(t, w, fill_in=True, align='center') for t, w in SHLOKA_CRITERIA]
+    score_to = len(cols)
+    cols += [Col('TOTAL\n/50', 9, align='center'), Col('Rank', 7, align='center'),
+             Col('Judge remarks', 22)]
+    wb = Workbook()
+    ws, hr, spot_from, last_row = build_sheet(
+        wb, key='Gita Shloka', title='Gita Shloka Recitation — Judging Sheet',
+        subtitle=f'{args.date}  ·  ISKCON Guwahati, Ulubari  ·  each criterion out of 10, total out of 50'
+                 f'  ·  shaded rows are for spot registrations',
+        cols=cols, rows=ident_rows('Gita Shloka Recitation', 'Shloka(s)\nrecited'),
+        spot_rows=args.spot, first=True, event_date=args.date)
+    total_formula(ws, hr, hr + 1, last_row, list(range(score_from, score_to + 1)), score_to + 1)
+    p = out / 'gita-shloka-judging.xlsx'; wb.save(p); made.append((p, last_row - hr))
+
+    # ── 2. Vedic Quiz ─────────────────────────────────────────────────────────
+    cols = IDENT() + [
+        Col('Present', 9, align='center'),
+        Col('Round 1\n/15', 9, align='center'),
+        Col('Round 2\n/15', 9, align='center'),
+        Col('TOTAL\n/30', 9, align='center'),
+        Col('Rank', 7, align='center'),
+        Col('Remarks', 24),
+    ]
+    r1 = len(IDENT()) + 2
+    wb = Workbook()
+    ws, hr, spot_from, last_row = build_sheet(
+        wb, key='Vedic Quiz', title='Vedic Quiz — Marks Sheet',
+        subtitle=f'{args.date}  ·  two rounds of 15 questions  ·  scores come from the quiz platform;'
+                 f' this sheet is the paper record  ·  shaded rows are for spot registrations',
+        cols=cols, rows=ident_rows('Vedic Quiz'),
+        spot_rows=args.spot, first=True, event_date=args.date)
+    total_formula(ws, hr, hr + 1, last_row, [r1, r1 + 1], r1 + 2)
+    yes_no(ws, hr, hr + 1, last_row, len(IDENT()) + 1)
+    p = out / 'vedic-quiz-marks.xlsx'; wb.save(p); made.append((p, last_row - hr))
+
+    # ── 3. Devotional Essay ───────────────────────────────────────────────────
+    cols = IDENT() + [Col('Topic chosen', 20)]
+    score_from = len(cols) + 1
+    cols += [Col(t, w, fill_in=True, align='center') for t, w in ESSAY_CRITERIA]
+    score_to = len(cols)
+    cols += [Col('TOTAL\n/50', 9, align='center'), Col('Rank', 7, align='center'),
+             Col('Judge remarks', 22)]
+    wb = Workbook()
+    ws, hr, spot_from, last_row = build_sheet(
+        wb, key='Devotional Essay', title='Devotional Essay — Judging Sheet',
+        subtitle=f'{args.date}  ·  each criterion out of 10, total out of 50'
+                 f'  ·  shaded rows are for spot registrations',
+        cols=cols, rows=ident_rows('Devotional Essay', 'Topic chosen'),
+        spot_rows=args.spot, first=True, event_date=args.date)
+    total_formula(ws, hr, hr + 1, last_row, list(range(score_from, score_to + 1)), score_to + 1)
+    p = out / 'devotional-essay-judging.xlsx'; wb.save(p); made.append((p, last_row - hr))
+
+    # ── 4. Registration counter ───────────────────────────────────────────────
+    TRACKS = ['Vedic Quiz', 'Gita Shloka Recitation', 'Devotional Essay',
+              'Vedic Art', 'Vedic Fancy Dress', 'Devotional Bhajan']
+    cols = [
+        Col('S.No', 6, align='center'), Col('Reg Code', 13, align='center'),
+        Col('Name', 24), Col('Class', 7, align='center'), Col('Group', 7, align='center'),
+        Col('School', 26), Col('Age', 6, align='center'), Col('Gender', 8, align='center'),
+        Col('Guardian', 20), Col('Guardian phone', 15, align='center'),
+        Col('WhatsApp', 15, align='center'), Col('Email', 24),
+    ]
+    track_from = len(cols) + 1
+    cols += [Col(t.replace(' ', '\n'), 11, align='center') for t in TRACKS]
+    track_to = len(cols)
+    cols += [
+        Col('No. of\nevents', 9, align='center'),
+        Col('Fee due\n(₹99 each)', 11, align='center'),
+        Col('Payment\nstatus', 11, align='center'),
+        Col('Amount\nreceived', 11, align='center'),
+        Col('Receipt /\nUPI ref', 15, align='center'),
+        Col('Collected\nby', 13, align='center'),
+        Col('Remarks', 24),
+    ]
+
+    rows = []
+    for rec in records:
+        dob = parse_date(get(rec, 'Date of birth'))
+        row = {
+            'Reg Code': get(rec, 'Registration code'), 'Name': get(rec, 'Name'),
+            'Class': get(rec, 'Class'), 'Group': get(rec, 'Group'),
+            'School': get(rec, 'School'), 'Age': age_on(dob, today),
+            'Gender': get(rec, 'Gender'), 'Guardian': get(rec, 'Guardian'),
+            'Guardian phone': get(rec, 'Guardian phone'),
+            'WhatsApp': get(rec, 'WhatsApp'), 'Email': get(rec, 'Email'),
+            'Payment\nstatus': 'PAID' if get(rec, 'Paid') == 'YES' else 'PENDING',
+            'Receipt /\nUPI ref': get(rec, 'Payment ref'),
+        }
+        for t in TRACKS:
+            row[t.replace(' ', '\n')] = 'YES' if entered(rec, t) else ''
+        rows.append(row)
+    rows.sort(key=lambda r: str(r['Name']).lower())
+
+    wb = Workbook()
+    ws, hr, spot_from, last_row = build_sheet(
+        wb, key='Registration counter', title='Registration Counter — Master Sheet',
+        subtitle=f'{args.date}  ·  ₹99 per competition  ·  tick each event entered, then fill fee and payment'
+                 f'  ·  shaded rows are for spot registrations',
+        cols=cols, rows=rows, spot_rows=max(args.spot * 2, 50), first=True, event_date=args.date)
+
+    # Events counted and fee derived from the ticks, so the counter never has to
+    # multiply ₹99 by hand under pressure.
+    a, b = get_column_letter(track_from), get_column_letter(track_to)
+    n_col, fee_col = track_to + 1, track_to + 2
+    for r in range(hr + 1, last_row + 1):
+        c = ws.cell(row=r, column=n_col, value=f'=COUNTIF({a}{r}:{b}{r},"YES")')
+        c.font, c.alignment, c.border = CELL_F, WRAP_MID, BOX
+        f = ws.cell(row=r, column=fee_col, value=f'=IF({get_column_letter(n_col)}{r}=0,"",{get_column_letter(n_col)}{r}*99)')
+        f.font = Font(name='Calibri', size=10, bold=True, color=INK)
+        f.alignment, f.border = WRAP_MID, BOX
+
+    dv = DataValidation(type='list', formula1='"PAID,PENDING"', allow_blank=True)
+    ws.add_data_validation(dv)
+    ps = get_column_letter(track_to + 3)
+    dv.add(f'{ps}{hr+1}:{ps}{last_row}')
+    for t in range(track_from, track_to + 1):
+        yes_no(ws, hr, hr + 1, last_row, t)
+
+    ws.page_setup.fitToWidth = 2
+    ws.print_title_cols = 'A:C'
+
+    p = out / 'registration-counter.xlsx'; wb.save(p); made.append((p, last_row - hr))
+
+    print(f'students from CSV: {len(records)}' if args.csv else 'no CSV given — blank sheets')
+    for path, rowcount in made:
+        print(f'  {str(path):<44} {rowcount} rows')
+
+
+if __name__ == '__main__':
+    main()
